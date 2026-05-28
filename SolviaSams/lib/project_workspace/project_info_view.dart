@@ -129,8 +129,8 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 28 * theme.fontScale, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: const Text("Tổng Quan Dự Án")), const SizedBox(height: 8),
-                                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 14 * theme.fontScale, color: Colors.grey[400], fontFamily: 'Segoe UI'), child: const Text("Báo cáo chỉ số, thông tin hệ thống và quản lý cấu trúc lớp học.")),
+                                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 28 * theme.fontScale, fontWeight: FontWeight.w900, color: theme.textColor, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: const Text("Tổng Quan Dự Án")), const SizedBox(height: 8),
+                                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 14 * theme.fontScale, color: theme.subTextColor, fontFamily: 'Segoe UI'), child: const Text("Báo cáo chỉ số, thông tin hệ thống và quản lý cấu trúc lớp học.")),
                               ],
                             ),
                           ),
@@ -163,7 +163,7 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
                           Flexible(
                             flex: isSmallScreen ? 0 : 6,
                             child: Container(
-                              width: double.infinity, padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.05))),
+                              width: double.infinity, padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -197,11 +197,11 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
                               child: Column(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.05))),
+                                    padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 10, children: [_buildSectionHeader(Icons.bar_chart_rounded, "LƯU LƯỢNG TUẦN", theme), Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [Icon(Icons.circle, color: theme.primaryColor, size: 10 * theme.fontScale), const SizedBox(width: 5), Text("Đúng giờ", style: TextStyle(color: Colors.white54, fontSize: 11 * theme.fontScale)), const SizedBox(width: 15), Icon(Icons.circle, color: Colors.orangeAccent, size: 10 * theme.fontScale), const SizedBox(width: 5), Text("Vi phạm", style: TextStyle(color: Colors.white54, fontSize: 11 * theme.fontScale))])]),
+                                        Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 10, children: [_buildSectionHeader(Icons.bar_chart_rounded, "LƯU LƯỢNG TUẦN", theme), Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [Icon(Icons.circle, color: theme.primaryColor, size: 10 * theme.fontScale), const SizedBox(width: 5), Text("Đúng giờ", style: TextStyle(color: theme.subTextColor, fontSize: 11 * theme.fontScale)), const SizedBox(width: 15), Icon(Icons.circle, color: Colors.orangeAccent, size: 10 * theme.fontScale), const SizedBox(width: 5), Text("Vi phạm", style: TextStyle(color: theme.subTextColor, fontSize: 11 * theme.fontScale))])]),
                                         const SizedBox(height: 30), _buildBarChart(theme),
                                       ],
                                     ),
@@ -212,8 +212,8 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Row(children: [Icon(Icons.qr_code_2_rounded, color: theme.primaryColor, size: 24 * theme.fontScale), const SizedBox(width: 10), Expanded(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("MÃ ĐỊNH DANH", overflow: TextOverflow.ellipsis)))]), const SizedBox(height: 15),
-                                        Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 15), decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withOpacity(0.1))), child: Center(child: Center(child: Text(_projectCode, style: TextStyle(color: theme.primaryColor, fontSize: 18 * theme.fontScale, fontWeight: FontWeight.w900, letterSpacing: 2.0), textAlign: TextAlign.center)))), const SizedBox(height: 15),
+                                        Row(children: [Icon(Icons.qr_code_2_rounded, color: theme.primaryColor, size: 24 * theme.fontScale), const SizedBox(width: 10), Expanded(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: theme.textColor, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("MÃ ĐỊNH DANH", overflow: TextOverflow.ellipsis)))]), const SizedBox(height: 15),
+                                        Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 15), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.04), borderRadius: BorderRadius.circular(10), border: Border.all(color: theme.borderColor)), child: Center(child: Center(child: Text(_projectCode, style: TextStyle(color: theme.primaryColor, fontSize: 18 * theme.fontScale, fontWeight: FontWeight.w900, letterSpacing: 2.0), textAlign: TextAlign.center)))), const SizedBox(height: 15),
                                         SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () => _showQRCodeDialog(context, theme), icon: Icon(Icons.share_rounded, color: Colors.white, size: 16 * theme.fontScale), label: Text("TẠO MÃ CHIA SẺ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.0, fontSize: 13 * theme.fontScale), overflow: TextOverflow.ellipsis), style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)))))
                                       ],
                                     ),
@@ -245,21 +245,143 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
     else { return Column(children: [card1, const SizedBox(height: 20), card2, const SizedBox(height: 20), card3, const SizedBox(height: 20), card4]); }
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, AppTheme theme) { return Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withOpacity(0.3), width: 1.5), boxShadow: [BoxShadow(color: color.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))]), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color, size: 24 * theme.fontScale)), const SizedBox(width: 15), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(title, style: TextStyle(color: Colors.white54, fontSize: 11 * theme.fontScale, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis), const SizedBox(height: 5), Text(value, style: TextStyle(color: Colors.white, fontSize: 20 * theme.fontScale, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis)]))])); }
-  Widget _buildInfoBox(String label, String value, IconData icon, AppTheme theme, {bool isHighlight = false}) { Color valColor = isHighlight ? Colors.greenAccent : Colors.white; return Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.04))), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: theme.primaryColor.withOpacity(0.8), size: 18 * theme.fontScale), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label.toUpperCase(), style: TextStyle(color: Colors.white54, fontSize: 11 * theme.fontScale, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis), const SizedBox(height: 6), Text(value, style: TextStyle(color: valColor, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.w600, height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis)]))])); }
-  Widget _buildSectionHeader(IconData icon, String title, AppTheme theme) => Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [AnimatedContainer(duration: const Duration(milliseconds: 300), child: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale)), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: Text(title, overflow: TextOverflow.ellipsis))]);
+  Widget _buildStatCard(String title, String value, IconData icon, Color color, AppTheme theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+      decoration: BoxDecoration(
+        color: theme.isDarkMode ? Colors.white.withOpacity(0.02) : theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        boxShadow: theme.isDarkMode ? [] : [
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: color, size: 24 * theme.fontScale),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(color: theme.subTextColor, fontSize: 11 * theme.fontScale, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  value,
+                  style: TextStyle(color: theme.textColor, fontSize: 20 * theme.fontScale, fontWeight: FontWeight.w900),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBox(String label, String value, IconData icon, AppTheme theme, {bool isHighlight = false}) {
+    Color valColor = isHighlight ? theme.successColor : theme.textColor;
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: theme.isDarkMode ? Colors.white.withOpacity(0.02) : theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.04) : theme.borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: theme.primaryColor.withOpacity(0.8), size: 18 * theme.fontScale),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(color: theme.subTextColor, fontSize: 11 * theme.fontScale, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(color: valColor, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.w600, height: 1.4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title, AppTheme theme) => Wrap(
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      AnimatedContainer(duration: const Duration(milliseconds: 300), child: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale)),
+      const SizedBox(width: 10),
+      AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 300),
+        style: TextStyle(color: theme.textColor, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'),
+        child: Text(title, overflow: TextOverflow.ellipsis),
+      ),
+    ],
+  );
+
   Widget _buildBarChart(AppTheme theme) {
     List<dynamic> chartData = _chartData.isNotEmpty ? _chartData : [{'day': 'T2', 'ok': 0.0, 'late': 0.0}, {'day': 'T3', 'ok': 0.0, 'late': 0.0}, {'day': 'T4', 'ok': 0.0, 'late': 0.0}, {'day': 'T5', 'ok': 0.0, 'late': 0.0}, {'day': 'T6', 'ok': 0.0, 'late': 0.0}, {'day': 'T7', 'ok': 0.0, 'late': 0.0}];
 
-    return SizedBox(height: 200, child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, crossAxisAlignment: CrossAxisAlignment.end, children: chartData.map((data) {
-      // Ép cột cao tối thiểu 2px để UI không bị văng khi thông số bằng 0
-      double okHeight = (data['ok'] as num).toDouble();
-      double lateHeight = (data['late'] as num).toDouble();
-      if(okHeight == 0) okHeight = 2.0;
-      if(lateHeight == 0) lateHeight = 2.0;
+    return SizedBox(
+      height: 200,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: chartData.map((data) {
+          // Ép cột cao tối thiểu 2px để UI không bị văng khi thông số bằng 0
+          double okHeight = (data['ok'] as num).toDouble();
+          double lateHeight = (data['late'] as num).toDouble();
+          if(okHeight == 0) okHeight = 2.0;
+          if(lateHeight == 0) lateHeight = 2.0;
 
-      return Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [Row(crossAxisAlignment: CrossAxisAlignment.end, children: [Container(width: 12 * theme.fontScale, height: okHeight, decoration: BoxDecoration(color: theme.primaryColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))), const SizedBox(width: 4), Container(width: 12 * theme.fontScale, height: lateHeight, decoration: BoxDecoration(color: Colors.orangeAccent, borderRadius: const BorderRadius.vertical(top: Radius.circular(6))))]), const SizedBox(height: 10), Text(data['day'].toString(), style: TextStyle(color: Colors.white54, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold))]);
-    }).toList()));
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(width: 12 * theme.fontScale, height: okHeight, decoration: BoxDecoration(color: theme.primaryColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))),
+                  const SizedBox(width: 4),
+                  Container(width: 12 * theme.fontScale, height: lateHeight, decoration: BoxDecoration(color: Colors.orangeAccent, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(data['day'].toString(), style: TextStyle(color: theme.subTextColor, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)),
+            ],
+          );
+        }).toList(),
+      ),
+    );
   }
 
   // --- BẬT BẢNG CẤU HÌNH DỰ ÁN (FULL CHỨC NĂNG) ---
@@ -610,9 +732,9 @@ class _ProjectInfoViewState extends State<ProjectInfoView> {
   }
 
   void _showQRCodeDialog(BuildContext context, AppTheme theme) { /*... giữ nguyên ...*/ }
-  Widget _buildOptionChip(String label, bool isSelected, VoidCallback onTap, AppTheme theme) => GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 300), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: isSelected ? theme.primaryColor.withOpacity(0.2) : Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(10), border: Border.all(color: isSelected ? theme.primaryColor : Colors.transparent, width: 1.5)), child: Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: isSelected ? theme.primaryColor : Colors.white54, fontWeight: FontWeight.bold, fontSize: 11 * theme.fontScale, fontFamily: 'Segoe UI'), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)))));
-  Widget _buildDialogTextField(String label, String value, Function(String) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(filled: true, fillColor: Colors.black.withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))))]); }
-  Widget _buildDialogTextFieldWithIcon(String label, IconData icon, String hint, Function(String) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), SizedBox(height: 45, child: TextFormField(onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), prefixIcon: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale), hintText: hint, hintStyle: const TextStyle(color: Colors.white24), filled: true, fillColor: Colors.black.withOpacity(0.3), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.05))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor)))))]); }
-  Widget _buildDialogTextFieldNoLabel(String hint, String value, Function(String) onChanged, AppTheme theme) { return SizedBox(height: 45, child: TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), hintText: hint, hintStyle: const TextStyle(color: Colors.white24), filled: true, fillColor: Colors.black.withOpacity(0.3), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.05))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor))))); }
-  Widget _buildDialogDropdown(String label, String value, List<String> items, Function(String?) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), SizedBox(height: 45, child: DropdownButtonFormField<String>(value: value, dropdownColor: const Color(0xFF0A101E), style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), filled: true, fillColor: Colors.black.withOpacity(0.3), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.05))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor))), items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onChanged))]); }
+  Widget _buildOptionChip(String label, bool isSelected, VoidCallback onTap, AppTheme theme) => GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 300), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: isSelected ? theme.primaryColor.withOpacity(0.2) : (theme.isDarkMode ? Colors.white.withOpacity(0.03) : theme.textColor.withOpacity(0.03)), borderRadius: BorderRadius.circular(10), border: Border.all(color: isSelected ? theme.primaryColor : Colors.transparent, width: 1.5)), child: Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: isSelected ? theme.primaryColor : theme.subTextColor, fontWeight: FontWeight.bold, fontSize: 11 * theme.fontScale, fontFamily: 'Segoe UI'), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)))));
+  Widget _buildDialogTextField(String label, String value, Function(String) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: theme.textColor.withOpacity(0.7), fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale), decoration: InputDecoration(filled: true, fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.borderColor)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.borderColor)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor, width: 1.5))))]); }
+  Widget _buildDialogTextFieldWithIcon(String label, IconData icon, String hint, Function(String) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: theme.textColor.withOpacity(0.7), fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), SizedBox(height: 45, child: TextFormField(onChanged: onChanged, style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), prefixIcon: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale), hintText: hint, hintStyle: TextStyle(color: theme.textColor.withOpacity(0.3)), filled: true, fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.borderColor)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor, width: 1.5)))))]); }
+  Widget _buildDialogTextFieldNoLabel(String hint, String value, Function(String) onChanged, AppTheme theme) { return SizedBox(height: 45, child: TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), hintText: hint, hintStyle: TextStyle(color: theme.textColor.withOpacity(0.3)), filled: true, fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.borderColor)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor, width: 1.5))))); }
+  Widget _buildDialogDropdown(String label, String value, List<String> items, Function(String?) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: theme.textColor.withOpacity(0.7), fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), SizedBox(height: 45, child: DropdownButtonFormField<String>(value: value, dropdownColor: theme.isDarkMode ? const Color(0xFF0A101E) : theme.cardColor, style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), filled: true, fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.borderColor)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor, width: 1.5))), items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onChanged))]); }
 }

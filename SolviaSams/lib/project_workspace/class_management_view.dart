@@ -141,13 +141,13 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 32 * theme.fontScale, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: Text(_currentClassName)),
+                    AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 32 * theme.fontScale, fontWeight: FontWeight.w900, color: theme.textColor, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: Text(_currentClassName)),
                     const SizedBox(width: 20),
                     Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: theme.primaryColor.withOpacity(0.15), borderRadius: BorderRadius.circular(8)), child: Text("Sĩ số: ${allStudents.length} hs", style: TextStyle(color: theme.primaryColor, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold))),
                     const SizedBox(width: 10),
                     Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.purpleAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(8)), child: Text("Khóa: $_courseStartYear - $_courseEndYear", style: TextStyle(color: Colors.purpleAccent, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold))),
                     const SizedBox(width: 10),
-                    Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: Text("Năm: $_currentYearStart - $_currentYearEnd | $_currentSemester", style: TextStyle(color: Colors.white70, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold))),
+                    Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.1) : theme.textColor.withOpacity(0.05), borderRadius: BorderRadius.circular(8)), child: Text("Năm: $_currentYearStart - $_currentYearEnd | $_currentSemester", style: TextStyle(color: theme.isDarkMode ? Colors.white70 : theme.textColor.withOpacity(0.8), fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold))),
 
                     const Spacer(),
                     if (widget.isSuperAdmin)
@@ -172,13 +172,13 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                   padding: const EdgeInsets.only(left: 10),
                   child: Text(
                     "Chưa có giáo viên quản lý lớp.",
-                    style: TextStyle(color: Colors.white54, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic),
+                    style: TextStyle(color: theme.isDarkMode ? Colors.white54 : Colors.black54, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic),
                   ),
                 )
 
                 // TRƯỜNG HỢP 2: CÓ GIÁO VIÊN -> VẼ THẺ VÀ CHO BẤM VÀO XEM HỒ SƠ
                     : Container(
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.primaryColor.withOpacity(0.3))),
+                  decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.02) : theme.cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.isDarkMode ? theme.primaryColor.withOpacity(0.3) : theme.borderColor)),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -207,13 +207,13 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(_currentTeacher, style: TextStyle(color: Colors.white, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold)),
+                                  Text(_currentTeacher, style: TextStyle(color: theme.textColor, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 4),
                                   Text("Giáo viên chủ nhiệm", style: TextStyle(color: theme.primaryColor, fontSize: 13 * theme.fontScale)),
                                 ],
                               ),
                             ),
-                            Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 24 * theme.fontScale)
+                            Icon(Icons.chevron_right_rounded, color: theme.isDarkMode ? Colors.white24 : Colors.black38, size: 24 * theme.fontScale)
                           ],
                         ),
                       ),
@@ -226,7 +226,7 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                 _editDays.isEmpty
                     ? Padding(
                   padding: const EdgeInsets.only(left: 10, top: 10),
-                  child: Text("Chưa thiết lập thời khóa biểu.", style: TextStyle(color: Colors.white54, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic)),
+                  child: Text("Chưa thiết lập thời khóa biểu.", style: TextStyle(color: theme.isDarkMode ? Colors.white54 : Colors.black54, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic)),
                 )
                     : SingleChildScrollView(scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: _editDays.map((dayData) => _buildDayCard(dayData, theme)).toList())),
 
@@ -244,9 +244,9 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                           final DateTime? picked = await showDatePicker(context: context, initialDate: _selectedDate ?? DateTime.now(), firstDate: DateTime(2025), lastDate: DateTime(2030), builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.dark(primary: theme.primaryColor, onPrimary: Colors.white, surface: const Color(0xFF101520), onSurface: Colors.white)), child: child!));
                           if (picked != null) setState(() => _selectedDate = picked);
                         },
-                        icon: Icon(Icons.calendar_today_rounded, size: 16 * theme.fontScale, color: _selectedDate == null ? Colors.white54 : theme.primaryColor),
-                        label: Text(_selectedDate == null ? "Lọc theo ngày" : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}", style: TextStyle(color: _selectedDate == null ? Colors.white54 : theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale)),
-                        style: OutlinedButton.styleFrom(side: BorderSide(color: _selectedDate == null ? Colors.white.withOpacity(0.2) : theme.primaryColor), padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        icon: Icon(Icons.calendar_today_rounded, size: 16 * theme.fontScale, color: _selectedDate == null ? (theme.isDarkMode ? Colors.white54 : Colors.black54) : theme.primaryColor),
+                        label: Text(_selectedDate == null ? "Lọc theo ngày" : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}", style: TextStyle(color: _selectedDate == null ? (theme.isDarkMode ? Colors.white54 : Colors.black54) : theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale)),
+                        style: OutlinedButton.styleFrom(side: BorderSide(color: _selectedDate == null ? theme.borderColor : theme.primaryColor), padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                       ),
                       if (_selectedDate != null) IconButton(onPressed: () => setState(() => _selectedDate = null), icon: const Icon(Icons.clear_rounded, color: Colors.redAccent)),
                       const SizedBox(width: 15),
@@ -257,11 +257,18 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                 const SizedBox(height: 20),
 
                 Container(
-                  width: double.infinity, decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: DataTable(
-                      showCheckboxColumn: false, headingRowColor: WidgetStateProperty.all(Colors.white.withOpacity(0.05)), dataRowMaxHeight: 60,
+                      showCheckboxColumn: false,
+                      headingRowColor: WidgetStateProperty.all(theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.primaryColor.withOpacity(0.05)),
+                      dataRowMaxHeight: 60,
                       columns: _buildDynamicColumns(theme),
                       rows: filteredStudents.map((student) {
                         var termData = _getTermData(student, _selectedYearFilter, _selectedSemesterFilter);
@@ -270,6 +277,9 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                             if (selected == true) {
                               showDialog(
                                   context: context, builder: (_) => MemberProfileDialog(isAdmin: true, memberData: {
+                                "id": student["id"],
+                                "student_code": student["id"],
+                                "avatar_url": student["avatar_url"] ?? "",
                                 "name": student["name"], "email": student["email"], "role": "Học sinh ${student['id']}",
                                 "dob": student["dob"], "phone": student["phone"], "hometown": "Hồ Chí Minh", "religion": "Không",
                                 "currentAddress": "Quận 1", "facebook": "Chưa liên kết",
@@ -277,7 +287,9 @@ class _ClassManagementViewState extends State<ClassManagementView> {
                                 "dynamicLabel1": "Giới tính", "dynamicValue1": student["gender"], "dynamicLabel2": "Người giám hộ", "dynamicValue2": student["parent"],
                                 "lateCount": termData["lateCount"], "absentCount": termData["absentCount"], "excusedCount": termData["excusedCount"], "violationHistory": termData["history"]
                               })
-                              );
+                              ).then((_) {
+                                _fetchClassData();
+                              });
                             }
                           },
                           cells: _buildDynamicCells(student, termData, theme),
@@ -659,18 +671,191 @@ class _ClassManagementViewState extends State<ClassManagementView> {
     showDialog(context: context, builder: (context) => AlertDialog(backgroundColor: const Color(0xFF101520), title: const Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent), SizedBox(width: 10), Text("Xác nhận", style: TextStyle(color: Colors.white))]), content: Text(message, style: TextStyle(color: Colors.white70)), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Hủy")), ElevatedButton(onPressed: () { onConfirm(); Navigator.pop(context); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent), child: const Text("Đồng ý", style: TextStyle(color: Colors.black)))]));
   }
 
-  // Popup Chọn lớp để Chuyển Học Sinh
   void _showTransferDialog(BuildContext context, String studentName, int index, StateSetter setStateDialog, AppTheme theme) {
     String targetClass = 'Lớp 10A2';
-    showDialog(context: context, builder: (context) => AlertDialog(backgroundColor: const Color(0xFF101520), title: const Text("Chuyển lớp", style: TextStyle(color: Colors.white)), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Chuyển học sinh '$studentName' sang lớp:", style: const TextStyle(color: Colors.white70)), const SizedBox(height: 15), DropdownButtonFormField<String>(value: targetClass, dropdownColor: const Color(0xFF0A101E), style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(filled: true, fillColor: Colors.black.withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))), items: ['Lớp 10A2', 'Lớp 11B1', 'Lớp 12C3'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (val) => targetClass = val!)]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Hủy")), ElevatedButton(onPressed: () { setStateDialog(() => allStudents.removeAt(index)); setState((){}); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Đã chuyển $studentName sang $targetClass"), backgroundColor: Colors.green)); }, style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor), child: const Text("Xác nhận chuyển", style: TextStyle(color: Colors.white)))]));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101520),
+        title: const Text("Chuyển lớp", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Chuyển học sinh '$studentName' sang lớp:", style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 15),
+            DropdownButtonFormField<String>(
+              value: targetClass,
+              dropdownColor: const Color(0xFF0A101E),
+              style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.black.withOpacity(0.3),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: ['Lớp 10A1', 'Lớp 10A2', 'Lớp 12A8'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (val) => targetClass = val!,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Hủy")),
+          ElevatedButton(
+            onPressed: () {
+              setStateDialog(() {
+                allStudents.removeAt(index);
+              });
+              setState(() {});
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Đã chuyển học sinh sang lớp mới thành công!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor),
+            child: const Text("Chuyển lớp", style: TextStyle(color: Colors.white)),
+          )
+        ],
+      )
+    );
+  }
+  Widget _buildFilterDropdown(String label, String value, List<String> items, Function(String?) onChanged, AppTheme theme) {
+    String safeValue = items.contains(value) ? value : items.first;
+    return Container(
+      height: 45,
+      decoration: BoxDecoration(
+        color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.textColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10)
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: safeValue,
+          dropdownColor: theme.isDarkMode ? const Color(0xFF101520) : theme.cardColor,
+          icon: Icon(Icons.arrow_drop_down, color: theme.primaryColor),
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold),
+          items: items.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+          onChanged: onChanged
+        )
+      )
+    );
   }
 
-  // --- CÁC WIDGET BỔ TRỢ ---
-  Widget _buildFilterDropdown(String label, String value, List<String> items, Function(String?) onChanged, AppTheme theme) { String safeValue = items.contains(value) ? value : items.first; return Container(height: 45, decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(10)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: safeValue, dropdownColor: const Color(0xFF101520), icon: Icon(Icons.arrow_drop_down, color: theme.primaryColor), padding: const EdgeInsets.symmetric(horizontal: 15), style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale, fontWeight: FontWeight.bold), items: items.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(), onChanged: onChanged))); }
-  Widget _buildDialogTextField(String label, String value, Function(String) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(filled: true, fillColor: Colors.black.withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))))]); }
-  Widget _buildDialogTextFieldNoLabel(String hint, String value, Function(String) onChanged, AppTheme theme) { return SizedBox(height: 45, child: TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), hintText: hint, hintStyle: TextStyle(color: Colors.white24, fontSize: 13 * theme.fontScale), filled: true, fillColor: Colors.black.withOpacity(0.3), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withOpacity(0.05))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.primaryColor, width: 1.5))))); }
-  Widget _buildSectionHeader(IconData icon, String title, AppTheme theme) => Row(children: [AnimatedContainer(duration: const Duration(milliseconds: 300), child: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale)), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: Text(title))]);
-  Widget _buildDayCard(EditDayModel dayData, AppTheme theme) { return Container(width: 220 * theme.fontScale, margin: const EdgeInsets.only(right: 20), decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: theme.primaryColor.withOpacity(0.15), borderRadius: const BorderRadius.vertical(top: Radius.circular(16))), child: Center(child: Text(dayData.dayName, style: TextStyle(color: theme.primaryColor, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold)))), Padding(padding: const EdgeInsets.all(15.0), child: Column(children: dayData.subjects.map((sub) => Padding(padding: const EdgeInsets.only(bottom: 15), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 8, height: 8, margin: const EdgeInsets.only(top: 6), decoration: BoxDecoration(color: theme.primaryColor, shape: BoxShape.circle)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(sub.name, style: TextStyle(color: Colors.white, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 2), Text(sub.timeFrame, style: TextStyle(color: Colors.grey[500], fontSize: 11 * theme.fontScale))]))]))).toList()))])); }
+  Widget _buildDialogTextField(String label, String value, Function(String) onChanged, AppTheme theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: theme.textColor.withOpacity(0.7), fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: value,
+          onChanged: onChanged,
+          style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))
+          )
+        )
+      ]
+    );
+  }
+
+  Widget _buildDialogTextFieldNoLabel(String hint, String value, Function(String) onChanged, AppTheme theme) {
+    return SizedBox(
+      height: 45,
+      child: TextFormField(
+        initialValue: value,
+        onChanged: onChanged,
+        style: TextStyle(color: theme.textColor, fontSize: 13 * theme.fontScale),
+        decoration: InputDecoration(
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15),
+          hintText: hint,
+          hintStyle: TextStyle(color: theme.textColor.withOpacity(0.3), fontSize: 13 * theme.fontScale),
+          filled: true,
+          fillColor: theme.isDarkMode ? Colors.black.withOpacity(0.3) : theme.textColor.withOpacity(0.03),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: theme.primaryColor, width: 1.5)
+          )
+        )
+      )
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title, AppTheme theme) => Row(
+    children: [
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        child: Icon(icon, color: theme.primaryColor, size: 18 * theme.fontScale)
+      ),
+      const SizedBox(width: 10),
+      AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 300),
+        style: TextStyle(color: theme.textColor, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'),
+        child: Text(title)
+      )
+    ]
+  );
+
+  Widget _buildDayCard(EditDayModel dayData, AppTheme theme) {
+    return Container(
+      width: 220 * theme.fontScale,
+      margin: const EdgeInsets.only(right: 20),
+      decoration: BoxDecoration(
+        color: theme.isDarkMode ? Colors.white.withOpacity(0.02) : theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.15),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16))
+            ),
+            child: Center(
+              child: Text(dayData.dayName, style: TextStyle(color: theme.primaryColor, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold))
+            )
+          ),
+          Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Column(
+              children: dayData.subjects.map((sub) => Padding(
+                padding: const EdgeInsets.only(bottom: 15),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(width: 8, height: 8, margin: const EdgeInsets.only(top: 6), decoration: BoxDecoration(color: theme.primaryColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sub.name, style: TextStyle(color: theme.textColor, fontSize: 14 * theme.fontScale, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          Text(sub.timeFrame, style: TextStyle(color: theme.subTextColor, fontSize: 11 * theme.fontScale))
+                        ]
+                      )
+                    )
+                  ]
+                )
+              )).toList()
+            )
+          )
+        ]
+      )
+    );
+  }
 
   // --- LOGIC BẢNG EXCEL ---
   // --- LOGIC BẢNG EXCEL (ĐÃ ĐỔI PHỤ HUYNH THÀNH EMAIL) ---
@@ -687,7 +872,39 @@ class _ClassManagementViewState extends State<ClassManagementView> {
   }
 
   List<DataCell> _buildDynamicCells(Map<String, dynamic> student, Map<String, dynamic> termData, AppTheme theme) {
-    List<DataCell> cells = [DataCell(Text(student["id"], style: TextStyle(color: theme.subTextColor))), DataCell(Text(student["name"], style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold)))];
+    List<DataCell> cells = [
+      DataCell(Text(student["id"], style: TextStyle(color: theme.subTextColor))),
+      DataCell(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(student["name"], style: TextStyle(color: theme.textColor, fontWeight: FontWeight.bold)),
+            if (student["avatar_url"] != null && student["avatar_url"].toString().isNotEmpty) ...[
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.greenAccent.withOpacity(0.4), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.face_rounded, color: Colors.greenAccent, size: 11 * theme.fontScale),
+                    const SizedBox(width: 4),
+                    Text(
+                      "ĐÃ ĐĂNG KÝ AI",
+                      style: TextStyle(color: Colors.greenAccent, fontSize: 8 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                    ),
+                  ],
+                ),
+              ),
+            ]
+          ],
+        ),
+      ),
+    ];
     if (_selectedFilter == 'Tất cả' || _selectedFilter == 'Có phép') {
       cells.addAll([DataCell(Text(student["gender"], style: TextStyle(color: theme.subTextColor))), DataCell(Text(student["email"], style: TextStyle(color: theme.subTextColor)))]);
       if (_selectedFilter == 'Có phép') cells.add(DataCell(Text(termData["excusedCount"].toString(), style: TextStyle(color: theme.infoColor, fontWeight: FontWeight.bold))));
@@ -697,4 +914,4 @@ class _ClassManagementViewState extends State<ClassManagementView> {
     else if (_selectedFilter == 'Nghỉ học') { cells.addAll([DataCell(Text(student["gender"], style: TextStyle(color: theme.subTextColor))), DataCell(Text(termData["absentCount"].toString(), style: TextStyle(color: theme.errorColor, fontWeight: FontWeight.bold)))]); }
     return cells;
   }
-}
+}

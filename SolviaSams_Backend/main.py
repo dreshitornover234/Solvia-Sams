@@ -551,6 +551,7 @@ def get_class_detail(class_id: int, db: Session = Depends(get_db)):
             "parent": st.parent_name or "Chưa cập nhật",
             "phone": st.phone or "Chưa cập nhật",
             "email": st.email or "hs@edu.vn",
+            "avatar_url": st.avatar_url or "",
             "attendance": st.attendance_data or default_attendance
         })
 
@@ -809,4 +810,405 @@ def delete_project_member(member_id: int, db: Session = Depends(get_db)):
         db.delete(member)
         db.commit()
     return {"status": "success"}
+
+
+# =====================================================================
+# API ĐĂNG KÝ KHUÔN MẶT HỌC SINH (FACE ENROLLMENT)
+# =====================================================================
+import base64
+
+class FaceRegisterRequest(BaseModel):
+    image_base64: str
+
+@app.post("/api/students/{student_code}/register-face")
+def register_student_face(student_code: str, request: FaceRegisterRequest, db: Session = Depends(get_db)):
+    from database import Student
+    
+    student = db.query(Student).filter(Student.student_code == student_code).first()
+    if not student:
+        return {"status": "error", "message": "Không tìm thấy học sinh trong hệ thống!"}
+        
+    try:
+        # Xử lý chuỗi Base64: Ví dụ "data:image/jpeg;base64,..."
+        base64_data = request.image_base64
+        if "," in base64_data:
+            base64_data = base64_data.split(",")[1]
+            
+        # Giải mã ảnh
+        image_bytes = base64.b64decode(base64_data)
+        
+        # Đường dẫn lưu file vật lý: static/avatars/{student_code}_face.jpg
+        os.makedirs("static/avatars", exist_ok=True)
+        file_location = f"static/avatars/{student_code}_face.jpg"
+        
+        # Lưu file nhị phân vào ổ đĩa
+        with open(file_location, "wb") as f:
+            f.write(image_bytes)
+            
+        # Cập nhật đường dẫn avatar vào cơ sở dữ liệu
+        student.avatar_url = f"/{file_location}"
+        
+        # Đánh dấu cần huấn luyện lại mô hình AI
+        global _ai_needs_retrain
+        _ai_needs_retrain = True
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Đã lưu ảnh chân dung đăng ký khuôn mặt học sinh thành công!",
+            "avatar_url": student.avatar_url
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": f"Lỗi lưu trữ khuôn mặt: {str(e)}"}
+
+
+# =====================================================================
+# API CẤU HÌNH GIỜ ĐIỂM DANH (CAMERA SETTINGS - ADMIN ONLY)
+# =====================================================================
+from typing import Optional
+
+class AttendanceConfigUpdate(BaseModel):
+    morning_time: str   # "07:30 - 11:30"
+    afternoon_time: str # "13:30 - 17:00"
+
+@app.get("/api/projects/{project_id}/attendance-config")
+def get_attendance_config(project_id: int, db: Session = Depends(get_db)):
+    from database import Project
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"status": "error", "message": "Không tìm thấy dự án"}
+    return {
+        "status": "success",
+        "data": {
+            "morning_time": project.morning_time or "07:30 - 11:30",
+            "afternoon_time": project.afternoon_time or "13:30 - 17:00",
+            "session_type": project.session_type or "Sáng & Chiều",
+        }
+    }
+
+@app.put("/api/projects/{project_id}/attendance-config")
+def update_attendance_config(project_id: int, config: AttendanceConfigUpdate, db: Session = Depends(get_db)):
+    from database import Project
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"status": "error", "message": "Không tìm thấy dự án"}
+    try:
+        project.morning_time = config.morning_time
+        project.afternoon_time = config.afternoon_time
+        db.commit()
+        return {"status": "success", "message": "Đã lưu cấu hình giờ điểm danh thành công!"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
+
+
+# =====================================================================
+# AI ĐỐI KHỚP KHUÔN MẶT THỜI GIAN THỰC (FACE RECOGNITION ATTENDANCE)
+# =====================================================================
+import cv2
+import numpy as np
+from datetime import datetime, date, time
+
+# Các biến toàn cục quản lý cache mô hình AI
+_face_recognizer = None
+_label_to_code = {}
+_ai_needs_retrain = True
+
+# Hàm load ảnh và huấn luyện mô hình AI LBPH
+def train_face_recognizer(db: Session):
+    global _face_recognizer, _label_to_code, _ai_needs_retrain
+    from database import Student
+    
+    print("[AI ENGINE] Đang huấn luyện lại mô hình đối khớp khuôn mặt...")
+    
+    # Khởi động mô hình nhận diện khuôn mặt LBPH của OpenCV
+    recognizer = cv2.face.LBPHFaceRecognizer_create()
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    
+    students = db.query(Student).all()
+    
+    faces = []
+    labels = []
+    label_to_code = {}
+    
+    label_id = 1
+    for st in students:
+        if st.avatar_url:
+            img_path = st.avatar_url.lstrip('/')
+            if os.path.exists(img_path):
+                try:
+                    # Đọc ảnh ở chế độ màu xám (Grayscale)
+                    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+                    if img is None:
+                        continue
+                    
+                    # Phát hiện khuôn mặt
+                    detected_faces = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
+                    for (x, y, w, h) in detected_faces:
+                        face_roi = img[y:y+h, x:x+w]
+                        face_roi = cv2.resize(face_roi, (200, 200))
+                        faces.append(face_roi)
+                        labels.append(label_id)
+                        
+                    label_to_code[label_id] = st.student_code
+                    label_id += 1
+                except Exception as e:
+                    print(f"[AI ENGINE] Lỗi huấn luyện học sinh {st.student_code}: {e}")
+                    
+    if len(faces) > 0:
+        recognizer.train(faces, np.array(labels))
+        _face_recognizer = recognizer
+        _label_to_code = label_to_code
+        _ai_needs_retrain = False
+        print(f"[AI ENGINE] Đã huấn luyện thành công {len(faces)} khuôn mặt của {len(label_to_code)} học sinh.")
+    else:
+        _face_recognizer = None
+        _label_to_code = {}
+        _ai_needs_retrain = False
+        print("[AI ENGINE] Không tìm thấy ảnh chân dung học sinh nào hợp lệ để train.")
+
+class FaceRecognizeRequest(BaseModel):
+    image_base64: str
+
+@app.post("/api/attendance/recognize-face")
+def recognize_face(request: FaceRecognizeRequest, db: Session = Depends(get_db)):
+    global _face_recognizer, _label_to_code, _ai_needs_retrain
+    from database import Student, AttendanceRecord
+    
+    # 1. Đảm bảo mô hình được huấn luyện
+    if _ai_needs_retrain or _face_recognizer is None:
+        try:
+            train_face_recognizer(db)
+        except Exception as e:
+            print(f"[AI ENGINE] Lỗi khi tự động huấn luyện: {e}")
+            
+    # 2. Giải mã ảnh Base64 gửi lên từ frontend
+    try:
+        base64_data = request.image_base64
+        if "," in base64_data:
+            base64_data = base64_data.split(",")[1]
+        image_bytes = base64.b64decode(base64_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+    except Exception as e:
+        return {"status": "error", "message": f"Lỗi giải mã ảnh: {e}"}
+        
+    if img is None:
+        return {"status": "error", "message": "Ảnh gửi lên không hợp lệ."}
+        
+    # 3. Phát hiện khuôn mặt trong frame
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    detected_faces = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
+    
+    if len(detected_faces) == 0:
+        return {"status": "no_face", "message": "Không phát hiện thấy khuôn mặt trong khung hình."}
+        
+    # Lấy khuôn mặt đầu tiên phát hiện được
+    (x, y, w, h) = detected_faces[0]
+    face_roi = img[y:y+h, x:x+w]
+    face_roi = cv2.resize(face_roi, (200, 200))
+    
+    # 4. Đối khớp khuôn mặt bằng LBPH
+    if _face_recognizer is None:
+        return {"status": "unknown", "message": "Hệ thống AI chưa có dữ liệu khuôn mặt đã đăng ký."}
+        
+    try:
+        label, distance = _face_recognizer.predict(face_roi)
+        # Tính phần trăm độ tin cậy ngược từ khoảng cách (LBPH distance thường < 80 là khớp tốt)
+        confidence_pct = max(0.0, min(100.0, (120.0 - distance) / 120.0 * 100.0))
+        
+        # Ngưỡng chấp nhận (THRESHOLD = 85.0) -> Khoảng cách khoảng < 85 là khớp
+        if distance > 85.0 or label not in _label_to_code:
+            return {"status": "unknown", "message": f"Khuôn mặt lạ hoặc không khớp (Độ khớp: {confidence_pct:.1f}%, dist: {distance:.1f})"}
+            
+        student_code = _label_to_code[label]
+        student = db.query(Student).filter(Student.student_code == student_code).first()
+        if not student:
+            return {"status": "unknown", "message": "Không tìm thấy học sinh liên kết với khuôn mặt này."}
+            
+        # 5. Ghi nhận điểm danh
+        from datetime import timedelta
+        today = date.today()
+        now_time = datetime.now().time()
+        
+        # 5.1. Lấy cấu hình ca học từ Project
+        classroom = student.classroom
+        project = classroom.project if classroom else None
+        
+        # Thiết lập các mốc mặc định cực chuẩn
+        morning_start = time(7, 30, 0)
+        morning_end = time(11, 30, 0)
+        afternoon_start = time(13, 30, 0)
+        afternoon_end = time(17, 0, 0)
+        
+        session_type = "Sáng & Chiều"
+        
+        if project:
+            if project.session_type:
+                session_type = project.session_type
+                
+            # Đọc morning_time dạng string: "07:30 - 11:30" hoặc "07:30-11:30"
+            if project.morning_time and "-" in project.morning_time:
+                try:
+                    parts = project.morning_time.split("-")
+                    sh, sm = map(int, parts[0].strip().split(":"))
+                    eh, em = map(int, parts[1].strip().split(":"))
+                    morning_start = time(sh, sm, 0)
+                    morning_end = time(eh, em, 0)
+                except Exception:
+                    pass
+            
+            # Đọc afternoon_time dạng string: "13:30 - 17:00"
+            if project.afternoon_time and "-" in project.afternoon_time:
+                try:
+                    parts = project.afternoon_time.split("-")
+                    sh, sm = map(int, parts[0].strip().split(":"))
+                    eh, em = map(int, parts[1].strip().split(":"))
+                    afternoon_start = time(sh, sm, 0)
+                    afternoon_end = time(eh, em, 0)
+                except Exception:
+                    pass
+                    
+        # 5.2. Tính midpoint (mốc giữa) để phân chia Đầu/Cuối giờ
+        # Ca Sáng midpoint
+        m_start_mins = morning_start.hour * 60 + morning_start.minute
+        m_end_mins = morning_end.hour * 60 + morning_end.minute
+        m_mid_mins = (m_start_mins + m_end_mins) // 2
+        morning_midpoint = time(m_mid_mins // 60, m_mid_mins % 60, 0)
+        
+        # Ca Chiều midpoint
+        a_start_mins = afternoon_start.hour * 60 + afternoon_start.minute
+        a_end_mins = afternoon_end.hour * 60 + afternoon_end.minute
+        a_mid_mins = (a_start_mins + a_end_mins) // 2
+        afternoon_midpoint = time(a_mid_mins // 60, a_mid_mins % 60, 0)
+        
+        # 5.3. Xác định ca/slot hiện tại
+        session_type_str = str(session_type or "").strip()
+        has_morning = "Sáng" in session_type_str or not session_type_str
+        has_afternoon = "Chiều" in session_type_str or not session_type_str
+        
+        current_slot = None
+        is_check_in = True
+        target_time = None
+        
+        if now_time < time(12, 0, 0):
+            if has_morning:
+                if now_time < morning_midpoint:
+                    current_slot = "Đầu giờ Sáng"
+                    is_check_in = True
+                    target_time = morning_start
+                else:
+                    current_slot = "Cuối giờ Sáng"
+                    is_check_in = False
+                    target_time = morning_end
+        else:
+            if has_afternoon:
+                if now_time < afternoon_midpoint:
+                    current_slot = "Đầu giờ Chiều"
+                    is_check_in = True
+                    target_time = afternoon_start
+                else:
+                    current_slot = "Cuối giờ Chiều"
+                    is_check_in = False
+                    target_time = afternoon_end
+                    
+        if not current_slot:
+            return {
+                "status": "error",
+                "message": f"Không có ca học nào hoạt động vào thời gian này ({now_time.strftime('%H:%M')})."
+            }
+            
+        # 5.4. Tính toán trạng thái Đi trễ / Về sớm / Hợp lệ
+        dummy_date = date.today()
+        dt_now = datetime.combine(dummy_date, now_time)
+        dt_target = datetime.combine(dummy_date, target_time)
+        
+        attendance_status = "Hợp lệ"
+        if is_check_in:
+            # Check-in: cho phép trễ tối đa 15 phút
+            dt_deadline = dt_target + timedelta(minutes=15)
+            if dt_now > dt_deadline:
+                attendance_status = "Đi trễ"
+        else:
+            # Check-out: cho phép về sớm tối đa 15 phút
+            dt_early_limit = dt_target - timedelta(minutes=15)
+            if dt_now < dt_early_limit:
+                attendance_status = "Về sớm"
+                
+        time_str = datetime.now().strftime("%H:%M")
+        status_response = "success"
+        
+        # 5.5. Kiểm tra trùng lặp cho ca học cụ thể này trong ngày
+        record = db.query(AttendanceRecord).filter(
+            AttendanceRecord.student_id == student.id,
+            AttendanceRecord.date == today,
+            AttendanceRecord.subject_name == current_slot
+        ).first()
+        
+        if not record:
+            # Tạo bản ghi điểm danh mới
+            record = AttendanceRecord(
+                student_id=student.id,
+                date=today,
+                time_in=now_time,
+                subject_name=current_slot, # Lưu slot vào cột subject_name!
+                status=attendance_status
+            )
+            db.add(record)
+            
+            # Cập nhật JSON attendance_data của học sinh
+            att_data = student.attendance_data or {}
+            
+            year_key = "2026-2027"
+            semester_key = "Học kỳ 1"
+            if classroom:
+                year_key = f"{classroom.current_year_start}-{classroom.current_year_end}"
+                semester_key = classroom.current_semester
+                
+            if year_key not in att_data:
+                att_data[year_key] = {}
+            if semester_key not in att_data[year_key]:
+                att_data[year_key][semester_key] = {
+                    "lateCount": 0,
+                    "absentCount": 0,
+                    "excusedCount": 0,
+                    "history": []
+                }
+                
+            term_data = att_data[year_key][semester_key]
+            
+            # Tăng số lần đi trễ nếu trạng thái là Đi trễ
+            if attendance_status == "Đi trễ":
+                term_data["lateCount"] = term_data.get("lateCount", 0) + 1
+                
+            # Ghi nhận vào lịch sử chi tiết
+            date_str = today.strftime("%d/%m/%y")
+            term_data["history"].append(f"{date_str}: {attendance_status} {current_slot} (Vào lúc {time_str})")
+            
+            student.attendance_data = att_data
+            db.commit()
+        else:
+            status_response = "already_marked"
+            if record.time_in:
+                time_str = record.time_in.strftime("%H:%M")
+            attendance_status = record.status
+            
+        class_name = student.classroom.class_name if student.classroom else "Không rõ"
+        
+        return {
+            "status": status_response,
+            "student_code": student.student_code,
+            "student_name": student.full_name,
+            "class_name": class_name,
+            "attendance_status": attendance_status,
+            "time_in": time_str,
+            "current_slot": current_slot,
+            "is_check_in": is_check_in,
+            "confidence": confidence_pct
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": f"Lỗi xử lý điểm danh AI: {e}"}
 

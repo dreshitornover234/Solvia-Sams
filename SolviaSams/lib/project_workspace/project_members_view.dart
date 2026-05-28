@@ -88,10 +88,10 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 28 * theme.fontScale, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: const Text("Thành Viên & Phân Quyền")), const SizedBox(height: 8),
-                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 14 * theme.fontScale, color: Colors.grey[400], fontFamily: 'Segoe UI'), child: const Text("Quản lý danh sách thành viên dự án và duyệt các yêu cầu tham gia mới.")), const SizedBox(height: 40),
+                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 28 * theme.fontScale, fontWeight: FontWeight.w900, color: theme.textColor, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: const Text("Thành Viên & Phân Quyền")), const SizedBox(height: 8),
+                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(fontSize: 14 * theme.fontScale, color: theme.subTextColor, fontFamily: 'Segoe UI'), child: const Text("Quản lý danh sách thành viên dự án và duyệt các yêu cầu tham gia mới.")), const SizedBox(height: 40),
                 Container(
-                  padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
+                  padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.02) : theme.textColor.withOpacity(0.03), borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
                   child: Row(
                     children: [
                       Expanded(child: _buildTabButton("THÀNH VIÊN HIỆN TẠI", Icons.people_alt_rounded, 0, theme)),
@@ -117,8 +117,8 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? theme.primaryColor : Colors.white54, size: 18 * theme.fontScale), const SizedBox(width: 10),
-            AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: isSelected ? theme.primaryColor : Colors.white54, fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: Text(title)),
+            Icon(icon, color: isSelected ? theme.primaryColor : (theme.isDarkMode ? Colors.white54 : Colors.black54), size: 18 * theme.fontScale), const SizedBox(width: 10),
+            AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: isSelected ? theme.primaryColor : (theme.isDarkMode ? Colors.white54 : Colors.black54), fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale, letterSpacing: 1.0, fontFamily: 'Segoe UI'), child: Text(title)),
             if (badgeCount != null && badgeCount > 0) ...[const SizedBox(width: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.orangeAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(10)), child: Text("$badgeCount", style: TextStyle(color: Colors.orangeAccent, fontSize: 11 * theme.fontScale, fontWeight: FontWeight.bold)))]
           ],
         ),
@@ -131,22 +131,22 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
       key: const ValueKey('TabMembers'), crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.05))),
+          padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [Icon(Icons.admin_panel_settings_rounded, color: theme.primaryColor, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("QUẢN TRỊ VIÊN (SUPER ADMIN)"))]), const SizedBox(height: 20),
+              Row(children: [Icon(Icons.admin_panel_settings_rounded, color: theme.primaryColor, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: theme.textColor, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("QUẢN TRỊ VIÊN (SUPER ADMIN)"))]), const SizedBox(height: 20),
               ...activeAdmins.asMap().entries.map((entry) => _buildMemberItem(entry.key, entry.value, true, theme))
             ],
           ),
         ), const SizedBox(height: 30),
         Container(
-          padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.05))),
+          padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [Icon(Icons.manage_accounts_rounded, color: Colors.greenAccent, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("THÀNH VIÊN QUẢN LÝ (PHÂN KHU)"))]), const SizedBox(height: 20),
-              if (activeManagers.isEmpty) Text("Chưa có thành viên quản lý nào.", style: TextStyle(color: Colors.white54, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic))
+              Row(children: [Icon(Icons.manage_accounts_rounded, color: Colors.greenAccent, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: theme.textColor, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("THÀNH VIÊN QUẢN LÝ (PHÂN KHU)"))]), const SizedBox(height: 20),
+              if (activeManagers.isEmpty) Text("Chưa có thành viên quản lý nào.", style: TextStyle(color: theme.subTextColor, fontSize: 13 * theme.fontScale, fontStyle: FontStyle.italic))
               else ...activeManagers.asMap().entries.map((entry) => _buildMemberItem(entry.key, entry.value, false, theme))
             ],
           ),
@@ -165,7 +165,7 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
     String avatarUrl = m["avatar_url"]?.toString() ?? "";
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 15), decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
+      margin: const EdgeInsets.only(bottom: 15), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.03) : theme.cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -203,10 +203,10 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
             child: Row(
               children: [
                 avatarUrl.isNotEmpty ? CircleAvatar(radius: 20 * theme.fontScale, backgroundImage: NetworkImage("http://127.0.0.1:8000$avatarUrl")) : CircleAvatar(radius: 20 * theme.fontScale, backgroundColor: badgeColor.withOpacity(0.2), child: Icon(Icons.person, color: badgeColor, size: 20 * theme.fontScale)), const SizedBox(width: 20),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(m["name"]?.toString() ?? "Không tên", style: TextStyle(color: Colors.white, fontSize: 15 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text(m["email"]?.toString() ?? "", style: TextStyle(color: Colors.grey[500], fontSize: 12 * theme.fontScale))])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(m["name"]?.toString() ?? "Không tên", style: TextStyle(color: theme.textColor, fontSize: 15 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text(m["email"]?.toString() ?? "", style: TextStyle(color: theme.subTextColor, fontSize: 12 * theme.fontScale))])),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: badgeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: badgeColor.withOpacity(0.3))), child: Text(roleDesc, style: TextStyle(color: badgeColor, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold))), const SizedBox(width: 10),
                 PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert_rounded, color: Colors.white54, size: 20 * theme.fontScale), color: const Color(0xFF101520), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.primaryColor.withOpacity(0.3))),
+                  icon: Icon(Icons.more_vert_rounded, color: theme.isDarkMode ? Colors.white54 : Colors.black54, size: 20 * theme.fontScale), color: const Color(0xFF101520), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.primaryColor.withOpacity(0.3))),
                   onSelected: (value) {
                     if (value == 'edit') { _showEditRoleDialog(context, m, isAdmin, theme); }
                     else if (value == 'delete') { _showDeleteConfirmDialog(context, m['id'], m["name"]?.toString() ?? "Người dùng", theme); }
@@ -226,12 +226,12 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
 
   Widget _buildPendingRequestsTab(AppTheme theme) {
     return Container(
-      key: const ValueKey('TabPending'), padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: Colors.white.withOpacity(0.015), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.05))),
+      key: const ValueKey('TabPending'), padding: const EdgeInsets.all(30), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.015) : theme.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [Icon(Icons.pending_actions_rounded, color: Colors.orangeAccent, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: Colors.white, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("DANH SÁCH CHỜ DUYỆT"))]), const SizedBox(height: 25),
-          if (pendingRequests.isEmpty) Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text("Không có yêu cầu tham gia nào đang chờ.", style: TextStyle(color: Colors.white54, fontSize: 14 * theme.fontScale, fontStyle: FontStyle.italic))))
+          Row(children: [Icon(Icons.pending_actions_rounded, color: Colors.orangeAccent, size: 24 * theme.fontScale), const SizedBox(width: 10), AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: theme.textColor, fontSize: 16 * theme.fontScale, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontFamily: 'Segoe UI'), child: const Text("DANH SÁCH CHỜ DUYỆT"))]), const SizedBox(height: 25),
+          if (pendingRequests.isEmpty) Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text("Không có yêu cầu tham gia nào đang chờ.", style: TextStyle(color: theme.subTextColor, fontSize: 14 * theme.fontScale, fontStyle: FontStyle.italic))))
           else ...pendingRequests.asMap().entries.map((entry) => _buildRequestItem(entry.key, entry.value, theme))
         ],
       ),
@@ -246,7 +246,7 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
     String avatarUrl = r["avatar_url"]?.toString() ?? "";
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 15), decoration: BoxDecoration(color: Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
+      margin: const EdgeInsets.only(bottom: 15), decoration: BoxDecoration(color: theme.isDarkMode ? Colors.white.withOpacity(0.03) : theme.cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.isDarkMode ? Colors.white.withOpacity(0.05) : theme.borderColor)),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -281,7 +281,7 @@ class _ProjectMembersViewState extends State<ProjectMembersView> {
             child: Row(
               children: [
                 avatarUrl.isNotEmpty ? CircleAvatar(radius: 20 * theme.fontScale, backgroundImage: NetworkImage("http://127.0.0.1:8000$avatarUrl")) : CircleAvatar(radius: 20 * theme.fontScale, backgroundColor: Colors.orangeAccent.withOpacity(0.2), child: Icon(Icons.person, color: Colors.orangeAccent, size: 20 * theme.fontScale)), const SizedBox(width: 20),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(r["name"]?.toString() ?? "Không tên", style: TextStyle(color: Colors.white, fontSize: 15 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text("${r["email"] ?? ""}", style: TextStyle(color: Colors.grey[500], fontSize: 12 * theme.fontScale))])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(r["name"]?.toString() ?? "Không tên", style: TextStyle(color: theme.textColor, fontSize: 15 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text("${r["email"] ?? ""}", style: TextStyle(color: theme.subTextColor, fontSize: 12 * theme.fontScale))])),
                 OutlinedButton.icon(onPressed: () => _deleteMember(r["id"]), icon: Icon(Icons.close_rounded, color: Colors.redAccent, size: 16 * theme.fontScale), label: Text("Từ chối", style: TextStyle(color: Colors.redAccent, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.redAccent.withOpacity(0.5)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)))), const SizedBox(width: 15),
                 ElevatedButton.icon(onPressed: () => _showAssignRoleDialog(context, r, theme), icon: Icon(Icons.check_rounded, color: Colors.white, size: 16 * theme.fontScale), label: Text("Chấp nhận", style: TextStyle(color: Colors.white, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)))),
               ],

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme_manager.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:ui_web' as ui_web;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MemberProfileDialog extends StatefulWidget {
   final Map<String, dynamic> memberData;
@@ -187,6 +193,12 @@ class _MemberProfileDialogState extends State<MemberProfileDialog> {
                             Wrap(
                               alignment: WrapAlignment.end, spacing: 15, runSpacing: 15,
                               children: [
+                                ElevatedButton.icon(
+                                  onPressed: () => _showFaceEnrollmentDialog(context, theme),
+                                  icon: Icon(Icons.face_retouching_natural_rounded, color: Colors.white, size: 18 * theme.fontScale),
+                                  label: Text("Đăng ký khuôn mặt", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale)),
+                                  style: ElevatedButton.styleFrom(backgroundColor: theme.primaryColor, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                                ),
                                 OutlinedButton.icon(
                                   onPressed: () => _showAddLeaveDialog(context, theme),
                                   icon: Icon(Icons.event_available_rounded, color: Colors.lightBlueAccent, size: 18 * theme.fontScale),
@@ -365,4 +377,311 @@ class _MemberProfileDialogState extends State<MemberProfileDialog> {
   Widget _buildOptionChipDialog(String label, bool isSelected, VoidCallback onTap, AppTheme theme, Color activeColor) => GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 300), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: isSelected ? activeColor.withOpacity(0.2) : Colors.white.withOpacity(0.03), borderRadius: BorderRadius.circular(10), border: Border.all(color: isSelected ? activeColor : Colors.white.withOpacity(0.1), width: 1.5)), child: Center(child: AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 300), style: TextStyle(color: isSelected ? activeColor : Colors.white54, fontWeight: FontWeight.bold, fontSize: 13 * theme.fontScale, fontFamily: 'Segoe UI'), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)))));
   Widget _buildDialogTextField(String label, String value, Function(String) onChanged, AppTheme theme, {String? hint, IconData? icon}) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), TextFormField(initialValue: value, onChanged: onChanged, style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(hintText: hint, hintStyle: const TextStyle(color: Colors.white24), filled: true, fillColor: Colors.black.withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), suffixIcon: icon != null ? Icon(icon, color: Colors.white24, size: 18) : null))]); }
   Widget _buildDialogDropdown(String label, String value, List<String> items, Function(String?) onChanged, AppTheme theme) { return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(label, style: TextStyle(color: Colors.white70, fontSize: 12 * theme.fontScale, fontWeight: FontWeight.bold)), const SizedBox(height: 8), SizedBox(height: 52, child: DropdownButtonFormField<String>(value: value, dropdownColor: const Color(0xFF0A101E), style: TextStyle(color: Colors.white, fontSize: 13 * theme.fontScale), decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 15), filled: true, fillColor: Colors.black.withOpacity(0.3), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10))), items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: onChanged))]); }
+
+  void _showFaceEnrollmentDialog(BuildContext context, AppTheme theme) {
+    String studentCode = _data['student_code']?.toString() ?? _data['role']?.toString().replaceAll("Học sinh ", "").trim() ?? "";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return FaceEnrollmentDialog(
+          studentCode: studentCode,
+          theme: theme,
+          onSuccess: (newAvatarUrl) {
+            setState(() {
+              _data['avatar_url'] = newAvatarUrl;
+            });
+          },
+        );
+      },
+    );
+  }
 }
+
+class FaceEnrollmentDialog extends StatefulWidget {
+  final String studentCode;
+  final AppTheme theme;
+  final Function(String) onSuccess;
+
+  const FaceEnrollmentDialog({
+    super.key,
+    required this.studentCode,
+    required this.theme,
+    required this.onSuccess,
+  });
+
+  @override
+  State<FaceEnrollmentDialog> createState() => _FaceEnrollmentDialogState();
+}
+
+class _FaceEnrollmentDialogState extends State<FaceEnrollmentDialog> {
+  html.VideoElement? _videoElement;
+  String _viewType = '';
+  html.MediaStream? _localStream;
+  bool _hasError = false;
+  bool _isCapturing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewType = 'enroll-webcam-${DateTime.now().millisecondsSinceEpoch}';
+    _videoElement = html.VideoElement()
+      ..style.width = '100%'
+      ..style.height = '100%'
+      ..autoplay = true
+      ..style.objectFit = 'cover'
+      ..style.borderRadius = '16px';
+
+    // ignore: undefined_prefixed_name
+    ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) => _videoElement!);
+
+    _startCamera();
+  }
+
+  Future<void> _startCamera() async {
+    try {
+      final stream = await html.window.navigator.mediaDevices?.getUserMedia({'video': true});
+      if (stream != null) {
+        _localStream = stream;
+        _videoElement?.srcObject = stream;
+      }
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+      });
+    }
+  }
+
+  Future<void> _captureAndRegister() async {
+    if (_videoElement == null || _localStream == null || _isCapturing) return;
+
+    setState(() {
+      _isCapturing = true;
+    });
+
+    try {
+      final width = _videoElement!.videoWidth > 0 ? _videoElement!.videoWidth : 640;
+      final height = _videoElement!.videoHeight > 0 ? _videoElement!.videoHeight : 480;
+      
+      final canvas = html.CanvasElement(width: width, height: height);
+      final ctx = canvas.context2D;
+      ctx.drawImage(_videoElement!, 0, 0);
+      
+      final dataUrl = canvas.toDataUrl('image/jpeg', 0.9);
+
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/api/students/${widget.studentCode}/register-face'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'image_base64': dataUrl}),
+      );
+
+      if (response.statusCode == 200) {
+        final resData = jsonDecode(utf8.decode(response.bodyBytes));
+        if (resData['status'] == 'success') {
+          widget.onSuccess(resData['avatar_url']);
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Đăng ký khuôn mặt học sinh thành công!"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          _showError(resData['message'] ?? "Lỗi Backend");
+        }
+      } else {
+        _showError("Lỗi kết nối server (HTTP ${response.statusCode})");
+      }
+    } catch (e) {
+      _showError("Lỗi xử lý camera: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+    );
+  }
+
+  @override
+  void dispose() {
+    _localStream?.getTracks().forEach((track) {
+      track.stop();
+    });
+    _videoElement?.srcObject = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+
+    return Dialog(
+      backgroundColor: const Color(0xFF101520),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: theme.primaryColor.withOpacity(0.5)),
+      ),
+      child: Container(
+        width: 550,
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.face_retouching_natural_rounded, color: theme.primaryColor, size: 26),
+                    const SizedBox(width: 12),
+                    const Text(
+                      "Quét Đăng Ký Khuôn Mặt",
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Segoe UI'),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white54),
+                )
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Mã học sinh: ${widget.studentCode}",
+              style: TextStyle(color: theme.primaryColor, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'Segoe UI'),
+            ),
+            const SizedBox(height: 20),
+            
+            Container(
+              height: 350,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF070B14),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _hasError
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.videocam_off_rounded, color: Colors.redAccent, size: 50),
+                            SizedBox(height: 12),
+                            Text(
+                              "Không tìm thấy Webcam hoặc chưa cấp quyền!",
+                              style: TextStyle(color: Colors.white54, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Stack(
+                        children: [
+                          HtmlElementView(viewType: _viewType),
+                          
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: theme.primaryColor.withOpacity(0.3), width: 1.5),
+                              ),
+                              child: Stack(
+                                children: [
+                                  _buildCorner(0, 0, top: 40, left: 40, color: theme.primaryColor),
+                                  _buildCorner(1, 0, top: 40, right: 40, color: theme.primaryColor),
+                                  _buildCorner(0, 1, bottom: 40, left: 40, color: theme.primaryColor),
+                                  _buildCorner(1, 1, bottom: 40, right: 40, color: theme.primaryColor),
+                                  
+                                  if (_isCapturing)
+                                    Container(
+                                      color: Colors.black.withOpacity(0.5),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Hủy bỏ", style: TextStyle(color: Colors.white54, fontFamily: 'Segoe UI')),
+                ),
+                const SizedBox(width: 15),
+                ElevatedButton.icon(
+                  onPressed: _hasError || _isCapturing ? null : _captureAndRegister,
+                  icon: const Icon(Icons.camera_alt_rounded, color: Colors.white),
+                  label: Text(
+                    _isCapturing ? "Đang đăng ký..." : "Chụp & Đăng ký",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Segoe UI'),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCorner(int horizontal, int vertical, {double? top, double? bottom, double? left, double? right, required Color color}) {
+    const size = 30.0;
+    const thickness = 3.0;
+
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          children: [
+            Positioned(
+              top: vertical == 0 ? 0 : null,
+              bottom: vertical == 1 ? 0 : null,
+              left: 0,
+              right: 0,
+              child: Container(height: thickness, color: color),
+            ),
+            Positioned(
+              left: horizontal == 0 ? 0 : null,
+              right: horizontal == 1 ? 0 : null,
+              top: 0,
+              bottom: 0,
+              child: Container(width: thickness, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

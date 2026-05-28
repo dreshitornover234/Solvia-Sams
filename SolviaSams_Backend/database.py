@@ -255,7 +255,7 @@ class ProjectMember(Base):
 def init_db():
     # CẢNH BÁO LÚC DEV: Lệnh drop_all() sẽ XÓA SẠCH database cũ để tạo lại cấu trúc mới này.
     # Khi phần mềm chạy thật, KHÔNG được dùng lệnh drop_all()
-    Base.metadata.drop_all(bind=engine)
+    # Base.metadata.drop_all(bind=engine)  # Thực hiện comment out dòng này để giữ nguyên dữ liệu khi reload!
     Base.metadata.create_all(bind=engine)
     print("Đã tái cấu trúc toàn bộ Cơ sở dữ liệu Chuẩn hóa SAMS thành công!")
 
