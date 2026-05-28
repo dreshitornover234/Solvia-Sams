@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../theme_manager.dart';
+import '../globals.dart' as globals;
 
 class AttendanceReportView extends StatefulWidget {
   const AttendanceReportView({super.key});
@@ -10,50 +14,79 @@ class AttendanceReportView extends StatefulWidget {
 
 class _AttendanceReportViewState extends State<AttendanceReportView> with SingleTickerProviderStateMixin {
   bool _isSubjectMode = true;
+  bool _isLoading = true;
   late AnimationController _pulseController;
+  Timer? _refreshTimer;
+
+  List<Map<String, dynamic>> subjectModeData = [];
+  List<Map<String, dynamic>> sessionModeData = [];
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat(reverse: true);
+    
+    // Tải dữ liệu báo cáo lần đầu tiên
+    _fetchAttendanceReport(showLoading: true);
+
+    // Bật timer tự động cập nhật ngầm (Silent update) mỗi 10 giây
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _fetchAttendanceReport(showLoading: false);
+      }
+    });
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  final List<Map<String, dynamic>> subjectModeData = [
-    { "className": "Lớp 10A1", "teacher": "Nguyễn Văn A", "status": "perfect", "total": 45, "present": 45, "violations": [] },
-    { "className": "Lớp 10A2", "teacher": "Phạm Thị D", "status": "violation", "total": 40, "present": 38,
-      "violations": [
-        {"name": "Trần Ngọc Mai", "id": "HS002", "type": "Đi trễ", "detail": "Đi trễ môn Toán (Vào lúc 07:15)"},
-        {"name": "Lê Tuấn Kiệt", "id": "HS003", "type": "Nghỉ học", "detail": "Vắng môn Hóa học (Chưa xác định)"},
-      ]
-    },
-    { "className": "Lớp 11B1", "teacher": "Trần Văn B", "status": "violation", "total": 35, "present": 34,
-      "violations": [
-        {"name": "Nguyễn Hoàng Anh", "id": "HS001", "type": "Có phép", "detail": "Vắng môn Thể dục (Lý do: Bệnh)"},
-      ]
+  Future<void> _fetchAttendanceReport({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+      });
     }
-  ];
-
-  final List<Map<String, dynamic>> sessionModeData = [
-    { "className": "Lớp 10A1", "teacher": "Nguyễn Văn A", "status": "perfect", "total": 45, "present": 45, "violations": [] },
-    { "className": "Lớp 10A2", "teacher": "Phạm Thị D", "status": "violation", "total": 40, "present": 38,
-      "violations": [
-        {"name": "Trần Ngọc Mai", "id": "HS002", "type": "Đi trễ", "detail": "Vào lớp trễ (Có mặt lúc 07:15)"},
-        {"name": "Lê Tuấn Kiệt", "id": "HS003", "type": "Nghỉ học", "detail": "Nghỉ học Buổi Sáng (Không phép)"},
-      ]
-    },
-    { "className": "Lớp 11B1", "teacher": "Trần Văn B", "status": "violation", "total": 35, "present": 34,
-      "violations": [
-        {"name": "Đỗ Văn C", "id": "HS015", "type": "Chưa đi học", "detail": "Đang chờ quét Camera... (Chưa có mặt)"},
-        {"name": "Nguyễn Hoàng Anh", "id": "HS001", "type": "Có phép", "detail": "Nghỉ học Buổi Sáng (Lý do: Khám sức khỏe)"},
-      ]
+    try {
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:8000/api/projects/${globals.currentProjectId}/attendance-today'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        if (data['status'] == 'success') {
+          if (mounted) {
+            setState(() {
+              subjectModeData = List<Map<String, dynamic>>.from(data['subject_mode']);
+              sessionModeData = List<Map<String, dynamic>>.from(data['session_mode']);
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      print("Lỗi tải báo cáo điểm danh LIVE: $e");
     }
-  ];
+  }
 
   String _getCurrentTimeString() {
     DateTime now = DateTime.now();
@@ -67,6 +100,29 @@ class _AttendanceReportViewState extends State<AttendanceReportView> with Single
         builder: (context, child) {
           final theme = AppTheme.instance;
           String today = _getCurrentTimeString();
+
+          if (_isLoading) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 100),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Đang đồng bộ dữ liệu điểm danh LIVE...",
+                    style: TextStyle(
+                      color: theme.subTextColor,
+                      fontSize: 14 * theme.fontScale,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
 
           List<Map<String, dynamic>> currentData = _isSubjectMode ? subjectModeData : sessionModeData;
 

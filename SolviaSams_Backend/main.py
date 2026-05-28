@@ -1212,3 +1212,235 @@ def recognize_face(request: FaceRecognizeRequest, db: Session = Depends(get_db))
         db.rollback()
         return {"status": "error", "message": f"Lỗi xử lý điểm danh AI: {e}"}
 
+
+# =====================================================================
+# API LẤY BÁO CÁO ĐIỂM DANH LIVE HÔM NAY (ATTENDANCE REPORT TODAY)
+# =====================================================================
+@app.get("/api/projects/{project_id}/attendance-today")
+def get_project_attendance_today(project_id: int, db: Session = Depends(get_db)):
+    from database import Project, ClassRoom, Student, AttendanceRecord, LeaveRequest, Staff
+    from datetime import datetime, date, time, timedelta
+
+    try:
+        # 1. Tìm dự án
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            return {"status": "error", "message": "Không tìm thấy dự án"}
+
+        today = date.today()
+        current_time_val = datetime.now().time()
+
+        # Thứ tự thứ trong tuần tiếng Việt
+        days_vn = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"]
+        today_vn = days_vn[datetime.now().weekday()]
+
+        # Lấy mốc giờ bắt đầu học từ Project hoặc mặc định
+        morning_start = time(7, 30, 0)
+        afternoon_start = time(13, 30, 0)
+
+        if project.morning_time and "-" in project.morning_time:
+            try:
+                parts = project.morning_time.split("-")
+                sh, sm = map(int, parts[0].strip().split(":"))
+                morning_start = time(sh, sm, 0)
+            except:
+                pass
+
+        if project.afternoon_time and "-" in project.afternoon_time:
+            try:
+                parts = project.afternoon_time.split("-")
+                sh, sm = map(int, parts[0].strip().split(":"))
+                afternoon_start = time(sh, sm, 0)
+            except:
+                pass
+
+        # Hạn chót quét camera điểm danh (15 phút sau giờ bắt đầu ca học)
+        morning_limit = (datetime.combine(today, morning_start) + timedelta(minutes=15)).time()
+        afternoon_limit = (datetime.combine(today, afternoon_start) + timedelta(minutes=15)).time()
+
+        # 2. Lấy toàn bộ lớp học của dự án
+        classes = db.query(ClassRoom).filter(ClassRoom.project_id == project_id).all()
+
+        subject_mode_list = []
+        session_mode_list = []
+
+        for c in classes:
+            # Lấy thông tin GVCN
+            teacher = db.query(Staff).filter(Staff.id == c.teacher_id).first() if c.teacher_id else None
+            teacher_name = teacher.full_name if teacher else "Chưa phân công"
+
+            # Lấy toàn bộ học sinh
+            students = db.query(Student).filter(Student.class_id == c.id).all()
+            total_students = len(students)
+
+            if total_students == 0:
+                empty_card = {
+                    "className": c.class_name,
+                    "teacher": teacher_name,
+                    "status": "perfect",
+                    "total": 0,
+                    "present": 0,
+                    "violations": []
+                }
+                subject_mode_list.append(empty_card)
+                session_mode_list.append(empty_card)
+                continue
+
+            student_ids = [s.id for s in students]
+
+            # Lấy bản ghi điểm danh hôm nay
+            records = db.query(AttendanceRecord).filter(
+                AttendanceRecord.student_id.in_(student_ids),
+                AttendanceRecord.date == today
+            ).all()
+
+            # Lấy đơn xin nghỉ phép hôm nay
+            leaves = db.query(LeaveRequest).filter(
+                LeaveRequest.student_id.in_(student_ids),
+                LeaveRequest.start_date <= today,
+                (LeaveRequest.end_date >= today) | (LeaveRequest.end_date == None),
+                LeaveRequest.is_approved == True
+            ).all()
+
+            student_records = {}
+            for r in records:
+                if r.student_id not in student_records:
+                    student_records[r.student_id] = []
+                student_records[r.student_id].append(r)
+
+            student_leaves = {l.student_id: l for l in leaves}
+
+            # Số lượng học sinh có mặt hôm nay (quét ít nhất 1 lần)
+            present_count = 0
+            for s_id in student_ids:
+                if s_id in student_records:
+                    present_count += 1
+
+            subj_violations = []
+            sess_violations = []
+
+            # Lấy thời khóa biểu hôm nay của lớp để map môn học
+            today_subjects = []
+            if c.timetable:
+                for day_data in c.timetable:
+                    if day_data.get("dayName") == today_vn:
+                        today_subjects = day_data.get("subjects", [])
+                        break
+
+            for s in students:
+                # TRƯỜNG HỢP 1: Học sinh có mặt (có quét camera)
+                if s.id in student_records:
+                    for r in student_records[s.id]:
+                        time_str = r.time_in.strftime("%H:%M") if r.time_in else ""
+                        
+                        if r.status in ["Đi trễ", "Về sớm"]:
+                            # Map môn học từ TKB
+                            matched_subject = ""
+                            if today_subjects and r.time_in:
+                                for sub in today_subjects:
+                                    time_range = sub.get("time", "")
+                                    if "-" in time_range:
+                                        try:
+                                            t_parts = time_range.split("-")
+                                            sh, sm = map(int, t_parts[0].strip().split(":"))
+                                            eh, em = map(int, t_parts[1].strip().split(":"))
+                                            s_time = time(sh, sm, 0)
+                                            e_time = time(eh, em, 0)
+                                            if s_time <= r.time_in <= e_time:
+                                                matched_subject = sub.get("subjectName", "")
+                                                break
+                                        except:
+                                            pass
+
+                            subj_name = matched_subject if matched_subject else (r.subject_name or "Môn học")
+
+                            subj_violations.append({
+                                "name": s.full_name,
+                                "id": s.student_code or "HS",
+                                "type": r.status,
+                                "detail": f"Vào lớp trễ môn {subj_name} (Có mặt lúc {time_str})" if r.status == "Đi trễ" else f"Ra về sớm môn {subj_name} (Về lúc {time_str})"
+                            })
+
+                            sess_violations.append({
+                                "name": s.full_name,
+                                "id": s.student_code or "HS",
+                                "type": r.status,
+                                "detail": f"Vào lớp trễ (Có mặt lúc {time_str})" if r.status == "Đi trễ" else f"Ra về sớm (Về lúc {time_str})"
+                            })
+
+                # TRƯỜNG HỢP 2: Học sinh có đơn xin nghỉ phép được duyệt
+                elif s.id in student_leaves:
+                    leave = student_leaves[s.id]
+                    reason_str = leave.reason or "Lý do cá nhân"
+
+                    subj_violations.append({
+                        "name": s.full_name,
+                        "id": s.student_code or "HS",
+                        "type": "Có phép",
+                        "detail": f"Vắng môn học (Lý do: {reason_str})"
+                    })
+
+                    sess_violations.append({
+                        "name": s.full_name,
+                        "id": s.student_code or "HS",
+                        "type": "Có phép",
+                        "detail": f"Nghỉ học Buổi Sáng (Lý do: {reason_str})" if current_time_val < time(12, 0, 0) else f"Nghỉ học Buổi Chiều (Lý do: {reason_str})"
+                    })
+
+                # TRƯỜNG HỢP 3: Chưa có bất kỳ ghi nhận nào
+                else:
+                    # Quyết định là đi học trễ/nghỉ học hay chưa tới giờ
+                    is_after_morning_deadline = current_time_val > morning_limit
+                    is_after_afternoon_deadline = current_time_val > afternoon_limit
+
+                    if current_time_val < time(12, 0, 0):
+                        status_type = "Nghỉ học" if is_after_morning_deadline else "Chưa đi học"
+                        detail_str = "Nghỉ học Buổi Sáng (Không phép)" if is_after_morning_deadline else "Đang chờ quét Camera... (Chưa có mặt)"
+                        detail_subj = "Vắng môn học (Chưa xác định)" if is_after_morning_deadline else "Đang chờ quét Camera... (Chưa có mặt)"
+                    else:
+                        status_type = "Nghỉ học" if is_after_afternoon_deadline else "Chưa đi học"
+                        detail_str = "Nghỉ học Buổi Chiều (Không phép)" if is_after_afternoon_deadline else "Đang chờ quét Camera... (Chưa có mặt)"
+                        detail_subj = "Vắng môn học (Chưa xác định)" if is_after_afternoon_deadline else "Đang chờ quét Camera... (Chưa có mặt)"
+
+                    subj_violations.append({
+                        "name": s.full_name,
+                        "id": s.student_code or "HS",
+                        "type": status_type,
+                        "detail": detail_subj
+                    })
+
+                    sess_violations.append({
+                        "name": s.full_name,
+                        "id": s.student_code or "HS",
+                        "type": status_type,
+                        "detail": detail_str
+                    })
+
+            subject_mode_list.append({
+                "className": c.class_name,
+                "teacher": teacher_name,
+                "status": "perfect" if len(subj_violations) == 0 else "violation",
+                "total": total_students,
+                "present": present_count,
+                "violations": [v for v in subj_violations if v["type"] != "Hợp lệ"]
+            })
+
+            session_mode_list.append({
+                "className": c.class_name,
+                "teacher": teacher_name,
+                "status": "perfect" if len(sess_violations) == 0 else "violation",
+                "total": total_students,
+                "present": present_count,
+                "violations": [v for v in sess_violations if v["type"] != "Hợp lệ"]
+            })
+
+        return {
+            "status": "success",
+            "subject_mode": subject_mode_list,
+            "session_mode": session_mode_list
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": f"Lỗi lấy báo cáo điểm danh: {str(e)}"}
+
+
