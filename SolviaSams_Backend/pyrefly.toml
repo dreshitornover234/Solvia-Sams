@@ -1,0 +1,6 @@
+python_interpreter = "C:/Users/HUU AN/AppData/Local/Programs/Python/Python311/python.exe"
+disable-type-errors-in-ide = true
+
+[tool.pyrefly]
+python_interpreter = "C:/Users/HUU AN/AppData/Local/Programs/Python/Python311/python.exe"
+disable-type-errors-in-ide = true

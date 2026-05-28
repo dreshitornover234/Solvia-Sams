@@ -4,7 +4,7 @@ import uuid  # Thư viện tự tạo mã Code ngẫu nhiên
 # Thêm chữ Float vào danh sách import này
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date, Time, Text, Boolean, Float, JSON
 # 1. KẾT NỐI DATABASE MYSQL
-DATABASE_URL = "mysql+pymysql://root:@localhost:3306/sams_db"
+DATABASE_URL = "mysql+pymysql://root:@127.0.0.1:3306/sams_db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
