@@ -1005,212 +1005,219 @@ def recognize_face(request: FaceRecognizeRequest, db: Session = Depends(get_db))
     if len(detected_faces) == 0:
         return {"status": "no_face", "message": "Không phát hiện thấy khuôn mặt trong khung hình."}
         
-    # Lấy khuôn mặt đầu tiên phát hiện được
-    (x, y, w, h) = detected_faces[0]
-    face_roi = img[y:y+h, x:x+w]
-    face_roi = cv2.resize(face_roi, (200, 200))
-    
-    # 4. Đối khớp khuôn mặt bằng LBPH
     if _face_recognizer is None:
         return {"status": "unknown", "message": "Hệ thống AI chưa có dữ liệu khuôn mặt đã đăng ký."}
+
+    results = []
+    
+    # Duyệt qua tất cả các khuôn mặt được phát hiện
+    for (x, y, w, h) in detected_faces:
+        face_roi = img[y:y+h, x:x+w]
+        face_roi = cv2.resize(face_roi, (200, 200))
         
-    try:
-        label, distance = _face_recognizer.predict(face_roi)
-        # Tính phần trăm độ tin cậy ngược từ khoảng cách (LBPH distance thường < 80 là khớp tốt)
-        confidence_pct = max(0.0, min(100.0, (120.0 - distance) / 120.0 * 100.0))
-        
-        # Ngưỡng chấp nhận (THRESHOLD = 85.0) -> Khoảng cách khoảng < 85 là khớp
-        if distance > 85.0 or label not in _label_to_code:
-            return {"status": "unknown", "message": f"Khuôn mặt lạ hoặc không khớp (Độ khớp: {confidence_pct:.1f}%, dist: {distance:.1f})"}
+        try:
+            label, distance = _face_recognizer.predict(face_roi)
+            confidence_pct = max(0.0, min(100.0, (120.0 - distance) / 120.0 * 100.0))
             
-        student_code = _label_to_code[label]
-        student = db.query(Student).filter(Student.student_code == student_code).first()
-        if not student:
-            return {"status": "unknown", "message": "Không tìm thấy học sinh liên kết với khuôn mặt này."}
-            
-        # 5. Ghi nhận điểm danh
-        from datetime import timedelta
-        today = date.today()
-        now_time = datetime.now().time()
-        
-        # 5.1. Lấy cấu hình ca học từ Project
-        classroom = student.classroom
-        project = classroom.project if classroom else None
-        
-        # Thiết lập các mốc mặc định cực chuẩn
-        morning_start = time(7, 30, 0)
-        morning_end = time(11, 30, 0)
-        afternoon_start = time(13, 30, 0)
-        afternoon_end = time(17, 0, 0)
-        
-        session_type = "Sáng & Chiều"
-        
-        if project:
-            if project.session_type:
-                session_type = project.session_type
+            # Ngưỡng chấp nhận
+            if distance > 85.0 or label not in _label_to_code:
+                # Khuôn mặt lạ hoặc không khớp
+                continue
                 
-            # Đọc morning_time dạng string: "07:30 - 11:30" hoặc "07:30-11:30"
-            if project.morning_time and "-" in project.morning_time:
-                try:
-                    parts = project.morning_time.split("-")
-                    sh, sm = map(int, parts[0].strip().split(":"))
-                    eh, em = map(int, parts[1].strip().split(":"))
-                    morning_start = time(sh, sm, 0)
-                    morning_end = time(eh, em, 0)
-                except Exception:
-                    pass
+            student_code = _label_to_code[label]
+            student = db.query(Student).filter(Student.student_code == student_code).first()
+            if not student:
+                continue
+                
+            # 5. Ghi nhận điểm danh
+            from datetime import timedelta
+            today = date.today()
+            now_time = datetime.now().time()
             
-            # Đọc afternoon_time dạng string: "13:30 - 17:00"
-            if project.afternoon_time and "-" in project.afternoon_time:
-                try:
-                    parts = project.afternoon_time.split("-")
-                    sh, sm = map(int, parts[0].strip().split(":"))
-                    eh, em = map(int, parts[1].strip().split(":"))
-                    afternoon_start = time(sh, sm, 0)
-                    afternoon_end = time(eh, em, 0)
-                except Exception:
-                    pass
+            # 5.1. Lấy cấu hình ca học từ Project
+            classroom = student.classroom
+            project = classroom.project if classroom else None
+            
+            # Thiết lập các mốc mặc định cực chuẩn
+            morning_start = time(7, 30, 0)
+            morning_end = time(11, 30, 0)
+            afternoon_start = time(13, 30, 0)
+            afternoon_end = time(17, 0, 0)
+            
+            session_type = "Sáng & Chiều"
+            
+            if project:
+                if project.session_type:
+                    session_type = project.session_type
                     
-        # 5.2. Tính midpoint (mốc giữa) để phân chia Đầu/Cuối giờ
-        # Ca Sáng midpoint
-        m_start_mins = morning_start.hour * 60 + morning_start.minute
-        m_end_mins = morning_end.hour * 60 + morning_end.minute
-        m_mid_mins = (m_start_mins + m_end_mins) // 2
-        morning_midpoint = time(m_mid_mins // 60, m_mid_mins % 60, 0)
-        
-        # Ca Chiều midpoint
-        a_start_mins = afternoon_start.hour * 60 + afternoon_start.minute
-        a_end_mins = afternoon_end.hour * 60 + afternoon_end.minute
-        a_mid_mins = (a_start_mins + a_end_mins) // 2
-        afternoon_midpoint = time(a_mid_mins // 60, a_mid_mins % 60, 0)
-        
-        # 5.3. Xác định ca/slot hiện tại
-        session_type_str = str(session_type or "").strip()
-        has_morning = "Sáng" in session_type_str or not session_type_str
-        has_afternoon = "Chiều" in session_type_str or not session_type_str
-        
-        current_slot = None
-        is_check_in = True
-        target_time = None
-        
-        if now_time < time(12, 0, 0):
-            if has_morning:
-                if now_time < morning_midpoint:
-                    current_slot = "Đầu giờ Sáng"
-                    is_check_in = True
-                    target_time = morning_start
-                else:
-                    current_slot = "Cuối giờ Sáng"
-                    is_check_in = False
-                    target_time = morning_end
-        else:
-            if has_afternoon:
-                if now_time < afternoon_midpoint:
-                    current_slot = "Đầu giờ Chiều"
-                    is_check_in = True
-                    target_time = afternoon_start
-                else:
-                    current_slot = "Cuối giờ Chiều"
-                    is_check_in = False
-                    target_time = afternoon_end
+                # Đọc morning_time dạng string: "07:30 - 11:30"
+                if project.morning_time and "-" in project.morning_time:
+                    try:
+                        parts = project.morning_time.split("-")
+                        sh, sm = map(int, parts[0].strip().split(":"))
+                        eh, em = map(int, parts[1].strip().split(":"))
+                        morning_start = time(sh, sm, 0)
+                        morning_end = time(eh, em, 0)
+                    except Exception:
+                        pass
+                
+                # Đọc afternoon_time dạng string: "13:30 - 17:00"
+                if project.afternoon_time and "-" in project.afternoon_time:
+                    try:
+                        parts = project.afternoon_time.split("-")
+                        sh, sm = map(int, parts[0].strip().split(":"))
+                        eh, em = map(int, parts[1].strip().split(":"))
+                        afternoon_start = time(sh, sm, 0)
+                        afternoon_end = time(eh, em, 0)
+                    except Exception:
+                        pass
+                        
+            # Ca Sáng midpoint
+            m_start_mins = morning_start.hour * 60 + morning_start.minute
+            m_end_mins = morning_end.hour * 60 + morning_end.minute
+            m_mid_mins = (m_start_mins + m_end_mins) // 2
+            morning_midpoint = time(m_mid_mins // 60, m_mid_mins % 60, 0)
+            
+            # Ca Chiều midpoint
+            a_start_mins = afternoon_start.hour * 60 + afternoon_start.minute
+            a_end_mins = afternoon_end.hour * 60 + afternoon_end.minute
+            a_mid_mins = (a_start_mins + a_end_mins) // 2
+            afternoon_midpoint = time(a_mid_mins // 60, a_mid_mins % 60, 0)
+            
+            session_type_str = str(session_type or "").strip()
+            has_morning = "Sáng" in session_type_str or not session_type_str
+            has_afternoon = "Chiều" in session_type_str or not session_type_str
+            
+            current_slot = None
+            is_check_in = True
+            target_time = None
+            
+            if now_time < time(12, 0, 0):
+                if has_morning:
+                    if now_time < morning_midpoint:
+                        current_slot = "Đầu giờ Sáng"
+                        is_check_in = True
+                        target_time = morning_start
+                    else:
+                        current_slot = "Cuối giờ Sáng"
+                        is_check_in = False
+                        target_time = morning_end
+            else:
+                if has_afternoon:
+                    if now_time < afternoon_midpoint:
+                        current_slot = "Đầu giờ Chiều"
+                        is_check_in = True
+                        target_time = afternoon_start
+                    else:
+                        current_slot = "Cuối giờ Chiều"
+                        is_check_in = False
+                        target_time = afternoon_end
+                        
+            if not current_slot:
+                continue
+                
+            dummy_date = date.today()
+            dt_now = datetime.combine(dummy_date, now_time)
+            dt_target = datetime.combine(dummy_date, target_time)
+            
+            attendance_status = "Hợp lệ"
+            if is_check_in:
+                dt_deadline = dt_target + timedelta(minutes=15)
+                if dt_now > dt_deadline:
+                    attendance_status = "Đi trễ"
+            else:
+                dt_early_limit = dt_target - timedelta(minutes=15)
+                if dt_now < dt_early_limit:
+                    attendance_status = "Về sớm"
                     
-        if not current_slot:
-            return {
-                "status": "error",
-                "message": f"Không có ca học nào hoạt động vào thời gian này ({now_time.strftime('%H:%M')})."
-            }
+            time_str = datetime.now().strftime("%H:%M")
+            status_response = "success"
             
-        # 5.4. Tính toán trạng thái Đi trễ / Về sớm / Hợp lệ
-        dummy_date = date.today()
-        dt_now = datetime.combine(dummy_date, now_time)
-        dt_target = datetime.combine(dummy_date, target_time)
-        
-        attendance_status = "Hợp lệ"
-        if is_check_in:
-            # Check-in: cho phép trễ tối đa 15 phút
-            dt_deadline = dt_target + timedelta(minutes=15)
-            if dt_now > dt_deadline:
-                attendance_status = "Đi trễ"
-        else:
-            # Check-out: cho phép về sớm tối đa 15 phút
-            dt_early_limit = dt_target - timedelta(minutes=15)
-            if dt_now < dt_early_limit:
-                attendance_status = "Về sớm"
+            # Kiểm tra trùng lặp
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.student_id == student.id,
+                AttendanceRecord.date == today,
+                AttendanceRecord.subject_name == current_slot
+            ).first()
+            
+            if not record:
+                record = AttendanceRecord(
+                    student_id=student.id,
+                    date=today,
+                    time_in=now_time,
+                    subject_name=current_slot,
+                    status=attendance_status
+                )
+                db.add(record)
                 
-        time_str = datetime.now().strftime("%H:%M")
-        status_response = "success"
-        
-        # 5.5. Kiểm tra trùng lặp cho ca học cụ thể này trong ngày
-        record = db.query(AttendanceRecord).filter(
-            AttendanceRecord.student_id == student.id,
-            AttendanceRecord.date == today,
-            AttendanceRecord.subject_name == current_slot
-        ).first()
-        
-        if not record:
-            # Tạo bản ghi điểm danh mới
-            record = AttendanceRecord(
-                student_id=student.id,
-                date=today,
-                time_in=now_time,
-                subject_name=current_slot, # Lưu slot vào cột subject_name!
-                status=attendance_status
-            )
-            db.add(record)
-            
-            # Cập nhật JSON attendance_data của học sinh
-            att_data = student.attendance_data or {}
-            
-            year_key = "2026-2027"
-            semester_key = "Học kỳ 1"
-            if classroom:
-                year_key = f"{classroom.current_year_start}-{classroom.current_year_end}"
-                semester_key = classroom.current_semester
+                att_data = student.attendance_data or {}
+                year_key = "2026-2027"
+                semester_key = "Học kỳ 1"
+                if classroom:
+                    year_key = f"{classroom.current_year_start}-{classroom.current_year_end}"
+                    semester_key = classroom.current_semester
+                    
+                if year_key not in att_data:
+                    att_data[year_key] = {}
+                if semester_key not in att_data[year_key]:
+                    att_data[year_key][semester_key] = {
+                        "lateCount": 0,
+                        "absentCount": 0,
+                        "excusedCount": 0,
+                        "history": []
+                    }
+                    
+                term_data = att_data[year_key][semester_key]
+                if attendance_status == "Đi trễ":
+                    term_data["lateCount"] = term_data.get("lateCount", 0) + 1
+                    
+                date_str = today.strftime("%d/%m/%y")
+                term_data["history"].append(f"{date_str}: {attendance_status} {current_slot} (Vào lúc {time_str})")
                 
-            if year_key not in att_data:
-                att_data[year_key] = {}
-            if semester_key not in att_data[year_key]:
-                att_data[year_key][semester_key] = {
-                    "lateCount": 0,
-                    "absentCount": 0,
-                    "excusedCount": 0,
-                    "history": []
-                }
+                student.attendance_data = att_data
+                db.commit()
+            else:
+                status_response = "already_marked"
+                if record.time_in:
+                    time_str = record.time_in.strftime("%H:%M")
+                attendance_status = record.status
                 
-            term_data = att_data[year_key][semester_key]
+            class_name = student.classroom.class_name if student.classroom else "Không rõ"
             
-            # Tăng số lần đi trễ nếu trạng thái là Đi trễ
-            if attendance_status == "Đi trễ":
-                term_data["lateCount"] = term_data.get("lateCount", 0) + 1
-                
-            # Ghi nhận vào lịch sử chi tiết
-            date_str = today.strftime("%d/%m/%y")
-            term_data["history"].append(f"{date_str}: {attendance_status} {current_slot} (Vào lúc {time_str})")
+            results.append({
+                "status": status_response,
+                "student_code": student.student_code,
+                "student_name": student.full_name,
+                "class_name": class_name,
+                "attendance_status": attendance_status,
+                "time_in": time_str,
+                "current_slot": current_slot,
+                "is_check_in": is_check_in,
+                "confidence": confidence_pct
+            })
             
-            student.attendance_data = att_data
-            db.commit()
-        else:
-            status_response = "already_marked"
-            if record.time_in:
-                time_str = record.time_in.strftime("%H:%M")
-            attendance_status = record.status
-            
-        class_name = student.classroom.class_name if student.classroom else "Không rõ"
-        
-        return {
-            "status": status_response,
-            "student_code": student.student_code,
-            "student_name": student.full_name,
-            "class_name": class_name,
-            "attendance_status": attendance_status,
-            "time_in": time_str,
-            "current_slot": current_slot,
-            "is_check_in": is_check_in,
-            "confidence": confidence_pct
-        }
-    except Exception as e:
-        db.rollback()
-        return {"status": "error", "message": f"Lỗi xử lý điểm danh AI: {e}"}
+        except Exception as e:
+            db.rollback()
+            print(f"[AI ENGINE] Lỗi xử lý một học sinh trong nhóm: {e}")
+            continue
+
+    if len(results) == 0:
+        return {"status": "unknown", "message": "Khuôn mặt lạ hoặc không khớp hệ thống."}
+
+    # Đảm bảo trả về cấu trúc tương thích ngược (Backward compatibility)
+    first_res = results[0]
+    return {
+        "status": first_res["status"],
+        "student_code": first_res["student_code"],
+        "student_name": first_res["student_name"],
+        "class_name": first_res["class_name"],
+        "attendance_status": first_res["attendance_status"],
+        "time_in": first_res["time_in"],
+        "current_slot": first_res["current_slot"],
+        "is_check_in": first_res["is_check_in"],
+        "confidence": first_res["confidence"],
+        "results": results  # Bổ sung danh sách toàn bộ kết quả nhận dạng
+    }
 
 
 # =====================================================================

@@ -275,6 +275,7 @@ class _WebCameraViewState extends State<WebCameraView> {
   Timer? _toastTimer;
   bool _isScanning = false;
   Map<String, dynamic>? _detectedStudent;
+  List<dynamic> _detectedStudents = [];
   bool _showToast = false;
   Map<String, DateTime> _lockList = {};
   String _statusMessage = 'AI ENGINE: ACTIVE SCANNING';
@@ -365,20 +366,36 @@ class _WebCameraViewState extends State<WebCameraView> {
           final now = DateTime.now();
           if (_lockList.containsKey(studentCode)) {
             final lastMatchTime = _lockList[studentCode]!;
-            if (now.difference(lastMatchTime).inSeconds < 30) {
+            if (now.difference(lastMatchTime).inSeconds < 10) {
               setState(() {
-                _statusMessage = 'AI ENGINE: ${studentName.toUpperCase()} RE-DETECTED (COOLDOWN)';
+                _statusMessage = 'AI ENGINE: COOLDOWN ACTIVE';
                 _isScanning = false;
               });
               return;
             }
           }
 
-          // Khóa học sinh này trong 30 giây để tránh nhận dạng liên tục
+          // Khóa học sinh này trong 10 giây
           _lockList[studentCode] = now;
 
-          setState(() {
-            _detectedStudent = {
+          final resultsRaw = data['results'] as List?;
+          final List<Map<String, dynamic>> resolvedResults = [];
+          if (resultsRaw != null) {
+            for (var r in resultsRaw) {
+              resolvedResults.add({
+                'student_code': r['student_code'] ?? '',
+                'student_name': r['student_name'] ?? 'Học sinh',
+                'class_name': r['class_name'] ?? '',
+                'time_in': r['time_in'] ?? '',
+                'status': r['attendance_status'] ?? 'Hợp lệ',
+                'is_already': r['status'] == 'already_marked',
+                'confidence': r['confidence'] ?? 0.0,
+                'current_slot': r['current_slot'] ?? 'Đầu giờ Sáng',
+              });
+              _lockList[r['student_code']] = now;
+            }
+          } else {
+            resolvedResults.add({
               'student_code': studentCode,
               'student_name': studentName,
               'class_name': className,
@@ -387,36 +404,72 @@ class _WebCameraViewState extends State<WebCameraView> {
               'is_already': status == 'already_marked',
               'confidence': confidence,
               'current_slot': currentSlot,
-            };
+            });
+          }
+
+          setState(() {
+            _detectedStudents = resolvedResults;
+            _detectedStudent = Map<String, dynamic>.from(_detectedStudents[0]);
             _showToast = true;
-            _statusMessage = 'AI ENGINE: MATCHED ${studentName.toUpperCase()} (${confidence.toStringAsFixed(1)}%)';
+            _statusMessage = _detectedStudents.length > 1
+                ? 'AI ENGINE: MATCHED ${_detectedStudents.length} STUDENTS'
+                : 'AI ENGINE: MATCHED ${studentName.toUpperCase()} (${confidence.toStringAsFixed(1)}%)';
           });
 
-          // Hiệu ứng âm thanh check-in thành công bằng Web Audio API qua JS (an toàn khi compile)
+          // Hiệu ứng âm thanh check-in thành công bằng Web Audio API qua JS
           try {
-            js.context.callMethod('eval', ["""
-              (function() {
-                try {
-                  var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                  var oscillator = audioCtx.createOscillator();
-                  var gainNode = audioCtx.createGain();
-                  oscillator.connect(gainNode);
-                  gainNode.connect(audioCtx.destination);
-                  oscillator.type = 'sine';
-                  oscillator.frequency.setValueAtTime(660, audioCtx.currentTime);
-                  gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                  oscillator.start();
-                  oscillator.stop(audioCtx.currentTime + 0.15);
-                } catch (e) {
-                  console.log("Audio feedback failed: " + e);
-                }
-              })();
-            """]);
+            if (_detectedStudents.length > 1) {
+              js.context.callMethod('eval', ["""
+                (function() {
+                  try {
+                    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    var osc1 = audioCtx.createOscillator();
+                    var gain1 = audioCtx.createGain();
+                    osc1.connect(gain1);
+                    gain1.connect(audioCtx.destination);
+                    osc1.frequency.setValueAtTime(660, audioCtx.currentTime);
+                    gain1.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    osc1.start();
+                    osc1.stop(audioCtx.currentTime + 0.1);
+
+                    var osc2 = audioCtx.createOscillator();
+                    var gain2 = audioCtx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+                    gain2.gain.setValueAtTime(0.08, audioCtx.currentTime + 0.15);
+                    osc2.start(audioCtx.currentTime + 0.15);
+                    osc2.stop(audioCtx.currentTime + 0.25);
+                  } catch (e) {
+                    console.log("Audio feedback failed: " + e);
+                  }
+                })();
+              """]);
+            } else {
+              js.context.callMethod('eval', ["""
+                (function() {
+                  try {
+                    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    var oscillator = audioCtx.createOscillator();
+                    var gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(660, audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.15);
+                  } catch (e) {
+                    console.log("Audio feedback failed: " + e);
+                  }
+                })();
+              """]);
+            }
           } catch (_) {}
 
-          // Tự động tắt Toast sau 5 giây
+          // Tự động tắt Toast
           _toastTimer?.cancel();
-          _toastTimer = Timer(const Duration(seconds: 5), () {
+          _toastTimer = Timer(Duration(seconds: _detectedStudents.length > 1 ? 8 : 5), () {
             if (mounted) {
               setState(() {
                 _showToast = false;
@@ -636,11 +689,12 @@ class _WebCameraViewState extends State<WebCameraView> {
             AnimatedPositioned(
               duration: const Duration(milliseconds: 500),
               curve: Curves.elasticOut,
-              bottom: _showToast ? 80 : -200,
+              bottom: _showToast ? 80 : -280,
               left: 25,
               right: 25,
-              child: _showToast && _detectedStudent != null
-                  ? Container(
+              child: _showToast && _detectedStudents.isNotEmpty
+                  ? AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -653,186 +707,320 @@ class _WebCameraViewState extends State<WebCameraView> {
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: _detectedStudent!['is_already'] 
+                          color: (_detectedStudent != null && _detectedStudent!['is_already']) 
                               ? Colors.amberAccent.withOpacity(0.8) 
                               : Colors.greenAccent.withOpacity(0.8), 
                           width: 2
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (_detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.35),
+                            color: ((_detectedStudent != null && _detectedStudent!['is_already']) ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.35),
                             blurRadius: 25,
                             spreadRadius: 1,
                           )
                         ],
                       ),
-                      child: Row(
-                        children: [
-                          // Circle Avatar với Neon Ring
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
-                                width: 2.5
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: (_detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.3),
-                                  blurRadius: 10,
-                                )
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(30),
-                              child: Image.network(
-                                'http://127.0.0.1:8000/static/avatars/${_detectedStudent!['student_code']}_face.jpg',
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 60,
-                                    height: 60,
-                                    color: const Color(0xFF1E293B),
-                                    child: Icon(
-                                      Icons.person_rounded, 
-                                      color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
-                                      size: 32
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Student Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
+                      child: _detectedStudents.length == 1
+                          ? Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: (_detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(30),
-                                        border: Border.all(
-                                          color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
-                                          width: 1
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            _detectedStudent!['is_already'] ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
-                                            color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent,
-                                            size: 14,
+                                // Circle Avatar với Neon Ring
+                                Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
+                                      width: 2.5
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (_detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.3),
+                                        blurRadius: 10,
+                                      )
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: Image.network(
+                                      'http://127.0.0.1:8000/static/avatars/${_detectedStudent!['student_code']}_face.jpg',
+                                      width: 60,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          width: 60,
+                                          height: 60,
+                                          color: const Color(0xFF1E293B),
+                                          child: Icon(
+                                            Icons.person_rounded, 
+                                            color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
+                                            size: 32
                                           ),
-                                          const SizedBox(width: 5),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Student Details
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: (_detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent).withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(30),
+                                              border: Border.all(
+                                                color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent, 
+                                                width: 1
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  _detectedStudent!['is_already'] ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+                                                  color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent,
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  _detectedStudent!['is_already'] 
+                                                      ? "ĐÃ ĐIỂM DANH ${(_detectedStudent!['current_slot'] ?? 'Đầu giờ Sáng').toUpperCase()} TRƯỚC ĐÓ" 
+                                                      : "ĐIỂM DANH ${(_detectedStudent!['current_slot'] ?? 'Đầu giờ Sáng').toUpperCase()}",
+                                                  style: TextStyle(
+                                                    color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 1.2,
+                                                    fontFamily: 'Segoe UI',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          // Confidence
                                           Text(
-                                            _detectedStudent!['is_already'] 
-                                                ? "ĐÃ ĐIỂM DANH ${(_detectedStudent!['current_slot'] ?? 'Đầu giờ Sáng').toUpperCase()} TRƯỚC ĐÓ" 
-                                                : "ĐIỂM DANH ${(_detectedStudent!['current_slot'] ?? 'Đầu giờ Sáng').toUpperCase()}",
-                                            style: TextStyle(
-                                              color: _detectedStudent!['is_already'] ? Colors.amberAccent : Colors.greenAccent,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 1.2,
-                                              fontFamily: 'Segoe UI',
+                                            "${_detectedStudent!['confidence'].toStringAsFixed(1)}% khớp",
+                                            style: const TextStyle(
+                                              color: Colors.white54, 
+                                              fontSize: 10, 
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'Segoe UI'
                                             ),
                                           ),
                                         ],
                                       ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        _detectedStudent!['student_name'],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.5,
+                                          fontFamily: 'Segoe UI',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Mã HS: ${_detectedStudent!['student_code']} • Lớp: ${_detectedStudent!['class_name']}",
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                          fontFamily: 'Segoe UI',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                // Status Badge with glow
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') 
+                                        ? Colors.orangeAccent.withOpacity(0.15) 
+                                        : Colors.greenAccent.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent,
+                                      width: 1.5,
                                     ),
-                                    const SizedBox(width: 8),
-                                    // Confidence
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: ((_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent).withOpacity(0.1),
+                                        blurRadius: 8,
+                                      )
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _detectedStudent!['status'] == 'Đi trễ' 
+                                            ? "ĐI TRỄ" 
+                                            : (_detectedStudent!['status'] == 'Về sớm' ? "VỀ SỚM" : "HỢP LỆ"),
+                                        style: TextStyle(
+                                          color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12,
+                                          fontFamily: 'Segoe UI',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _detectedStudent!['time_in'],
+                                        style: TextStyle(
+                                          color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent.withOpacity(0.8) : Colors.greenAccent.withOpacity(0.8),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Segoe UI',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.people_alt_rounded, color: Colors.greenAccent, size: 20 * theme.fontScale),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          "ĐÃ PHÁT HIỆN ${_detectedStudents.length} HỌC SINH ĐỒNG THỜI",
+                                          style: TextStyle(
+                                            color: Colors.greenAccent,
+                                            fontSize: 12 * theme.fontScale,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.2,
+                                            fontFamily: 'Segoe UI',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     Text(
-                                      "${_detectedStudent!['confidence'].toStringAsFixed(1)}% khớp",
-                                      style: const TextStyle(
-                                        color: Colors.white54, 
-                                        fontSize: 10, 
+                                      "${_detectedStudent?['current_slot'] ?? 'Đầu giờ Sáng'}",
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11 * theme.fontScale,
                                         fontWeight: FontWeight.bold,
-                                        fontFamily: 'Segoe UI'
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _detectedStudent!['student_name'],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
-                                    fontFamily: 'Segoe UI',
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Mã HS: ${_detectedStudent!['student_code']} • Lớp: ${_detectedStudent!['class_name']}",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontFamily: 'Segoe UI',
+                                const SizedBox(height: 15),
+                                Container(
+                                  constraints: const BoxConstraints(maxHeight: 220),
+                                  child: SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Column(
+                                      children: _detectedStudents.map((std) {
+                                        bool isAlready = std['is_already'] == true;
+                                        Color badgeColor = std['status'] == 'Đi trễ' || std['status'] == 'Về sớm'
+                                            ? Colors.orangeAccent
+                                            : Colors.greenAccent;
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 10),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.03),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(0.05),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              // Avatar
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(20),
+                                                child: Image.network(
+                                                  'http://127.0.0.1:8000/static/avatars/${std['student_code']}_face.jpg',
+                                                  width: 38,
+                                                  height: 38,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    return Container(
+                                                      width: 38,
+                                                      height: 38,
+                                                      color: const Color(0xFF1E293B),
+                                                      child: Icon(
+                                                        Icons.person_rounded,
+                                                        color: badgeColor,
+                                                        size: 20,
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              // Name & Code
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      std['student_name'],
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 14 * theme.fontScale,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontFamily: 'Segoe UI',
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      "Mã: ${std['student_code']} • Lớp: ${std['class_name']}",
+                                                      style: TextStyle(
+                                                        color: Colors.white60,
+                                                        fontSize: 10 * theme.fontScale,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              // Status Badge
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: badgeColor.withOpacity(0.15),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: badgeColor, width: 1),
+                                                ),
+                                                child: Text(
+                                                  isAlready
+                                                      ? "ĐÃ LƯU"
+                                                      : (std['status'] == 'Đi trễ' ? "ĐI TRỄ" : (std['status'] == 'Về sớm' ? "VỀ SỚM" : "HỢP LỆ")),
+                                                  style: TextStyle(
+                                                    color: badgeColor,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 9 * theme.fontScale,
+                                                    fontFamily: 'Segoe UI',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Status Badge with glow
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') 
-                                  ? Colors.orangeAccent.withOpacity(0.15) 
-                                  : Colors.greenAccent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent,
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: ((_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent).withOpacity(0.1),
-                                  blurRadius: 8,
-                                )
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _detectedStudent!['status'] == 'Đi trễ' 
-                                      ? "ĐI TRỄ" 
-                                      : (_detectedStudent!['status'] == 'Về sớm' ? "VỀ SỚM" : "HỢP LỆ"),
-                                  style: TextStyle(
-                                    color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent : Colors.greenAccent,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 12,
-                                    fontFamily: 'Segoe UI',
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _detectedStudent!['time_in'],
-                                  style: TextStyle(
-                                    color: (_detectedStudent!['status'] == 'Đi trễ' || _detectedStudent!['status'] == 'Về sớm') ? Colors.orangeAccent.withOpacity(0.8) : Colors.greenAccent.withOpacity(0.8),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Segoe UI',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                     )
                   : const SizedBox.shrink(),
             ),
@@ -1251,4 +1439,4 @@ class _ScanningLineState extends State<ScanningLine> with SingleTickerProviderSt
       },
     );
   }
-}
+}
